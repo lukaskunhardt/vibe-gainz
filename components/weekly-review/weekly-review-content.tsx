@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { MovementCategory } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -24,9 +23,14 @@ export function WeeklyReviewContent({ userId, category }: WeeklyReviewContentPro
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [movement, setMovement] = useState<any>(null);
-  const [weekData, setWeekData] = useState<any>(null);
-  const [recoveryScore, setRecoveryScore] = useState<any>(null);
+  const [movement, setMovement] = useState<{ id: string; daily_target: number; max_effort_reps: number } | null>(null);
+  const [recoveryScore, setRecoveryScore] = useState<{
+    firstSetPerformance: number;
+    rpeEfficiency: number;
+    targetAchievement: number;
+    consistency: number;
+    total: number;
+  } | null>(null);
   const [suggestedTarget, setSuggestedTarget] = useState(0);
   const [selectedTarget, setSelectedTarget] = useState(0);
 
@@ -35,6 +39,7 @@ export function WeeklyReviewContent({ userId, category }: WeeklyReviewContentPro
 
   useEffect(() => {
     loadWeeklyData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, category]);
 
   const loadWeeklyData = async () => {
@@ -90,8 +95,6 @@ export function WeeklyReviewContent({ userId, category }: WeeklyReviewContentPro
         dailyTarget: movementData.daily_target,
         maxEffortReps: movementData.max_effort_reps,
       };
-
-      setWeekData(weeklyData);
 
       const score = calculateRecoveryScore(weeklyData);
       setRecoveryScore(score);
@@ -198,7 +201,7 @@ export function WeeklyReviewContent({ userId, category }: WeeklyReviewContentPro
         <Card>
           <CardHeader>
             <CardTitle>Recovery Score</CardTitle>
-            <CardDescription>Overall assessment of last week's performance</CardDescription>
+            <CardDescription>Overall assessment of last week&apos;s performance</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <RecoveryScoreGauge score={recoveryScore.total} />
@@ -271,7 +274,7 @@ export function WeeklyReviewContent({ userId, category }: WeeklyReviewContentPro
               </div>
               {selectedTarget !== suggestedTarget && (
                 <p className="text-xs text-orange-500 text-center">
-                  You're overriding the suggested target
+                  You&apos;re overriding the suggested target
                 </p>
               )}
             </div>

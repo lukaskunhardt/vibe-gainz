@@ -31,16 +31,16 @@ export function MaxEffortPromptModal({ prompt, onDismiss, onComplete }: MaxEffor
           </div>
           <DialogTitle className="text-center text-2xl">Max Effort Test Available!</DialogTitle>
           <DialogDescription className="text-center">
-            It's time to test your {categoryName} progression
+            It&apos;s time to test your {categoryName} progression
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="rounded-lg bg-muted p-4 text-sm">
-            <p className="mb-2">You're ready for a new max effort test because:</p>
+            <p className="mb-2">You&apos;re ready for a new max effort test because:</p>
             <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-              <li>It's been 7+ days since your last test</li>
-              <li>OR your recent performance suggests you've gotten stronger</li>
+              <li>It&apos;s been 7+ days since your last test</li>
+              <li>OR your recent performance suggests you&apos;ve gotten stronger</li>
             </ul>
           </div>
 

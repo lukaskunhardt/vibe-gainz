@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Trophy, FileText } from "lucide-react";
 
 interface RPE10ConfirmationModalProps {
-  reps: number;
   onMaxEffort: () => void;
   onRegularSet: () => void;
   onChangeRPE: () => void;
 }
 
 export function RPE10ConfirmationModal({
-  reps,
   onMaxEffort,
   onRegularSet,
   onChangeRPE,

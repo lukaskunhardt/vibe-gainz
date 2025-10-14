@@ -24,10 +24,6 @@ export function OnboardingFlow({ userId, userEmail }: OnboardingFlowProps) {
   const [step, setStep] = useState<OnboardingStep>("welcome");
   const [loading, setLoading] = useState(false);
 
-  const [pushData, setPushData] = useState({ exercise: "", maxReps: 0 });
-  const [pullData, setPullData] = useState({ exercise: "", maxReps: 0 });
-  const [legsData, setLegsData] = useState({ exercise: "", maxReps: 0 });
-
   const totalSteps = 4;
   const currentStepNumber = {
     welcome: 0,
@@ -74,15 +70,12 @@ export function OnboardingFlow({ userId, userEmail }: OnboardingFlowProps) {
 
       if (movementError) throw movementError;
 
-      // Save to local state
+      // Move to next step
       if (category === "push") {
-        setPushData({ exercise: exerciseId, maxReps });
         setStep("pull");
       } else if (category === "pull") {
-        setPullData({ exercise: exerciseId, maxReps });
         setStep("legs");
       } else if (category === "legs") {
-        setLegsData({ exercise: exerciseId, maxReps });
         // Complete onboarding
         await completeOnboarding();
       }
@@ -154,9 +147,9 @@ export function OnboardingFlow({ userId, userEmail }: OnboardingFlowProps) {
             </div>
           </div>
           <div className="rounded-lg bg-muted p-4">
-            <h4 className="font-semibold mb-2">Let's get started!</h4>
+            <h4 className="font-semibold mb-2">Let&apos;s get started!</h4>
             <p className="text-sm text-muted-foreground">
-              We'll set up your three core movements: push, pull, and legs. For each, you'll
+              We&apos;ll set up your three core movements: push, pull, and legs. For each, you&apos;ll
               select an exercise and perform a max effort test to establish your baseline.
             </p>
           </div>
@@ -175,7 +168,7 @@ export function OnboardingFlow({ userId, userEmail }: OnboardingFlowProps) {
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-500/10">
             <Dumbbell className="h-10 w-10 text-green-500" />
           </div>
-          <CardTitle className="text-3xl">You're All Set!</CardTitle>
+          <CardTitle className="text-3xl">You&apos;re All Set!</CardTitle>
           <CardDescription className="text-base">
             Redirecting you to your dashboard...
           </CardDescription>

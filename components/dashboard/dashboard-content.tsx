@@ -7,8 +7,8 @@ import { Movement, MovementCategory, MaxEffortPrompt } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Lock, Trophy, Plus, ChevronRight, Info } from "lucide-react";
-import { getTodayStart, getTodayEnd, getDaysSince, isTodayMonday, getPreviousWeekStart } from "@/lib/utils/date-helpers";
+import { Lock, Trophy, Plus, Info } from "lucide-react";
+import { getTodayStart, getTodayEnd, isTodayMonday, getPreviousWeekStart } from "@/lib/utils/date-helpers";
 import { MaxEffortPromptModal } from "./max-effort-prompt-modal";
 import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
 
@@ -33,6 +33,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
 
   useEffect(() => {
     loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const loadDashboardData = async () => {
@@ -198,7 +199,6 @@ function MovementCard({
   isLocked,
   hasMaxEffortPrompt,
   movement,
-  onRefresh,
 }: MovementCardProps) {
   const percentage = targetReps > 0 ? Math.min((currentReps / targetReps) * 100, 100) : 0;
   const isComplete = currentReps >= targetReps;

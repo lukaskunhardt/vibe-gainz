@@ -111,7 +111,7 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
       <Card>
         <CardHeader>
           <CardTitle>Training Methodology</CardTitle>
-          <CardDescription>Based on Kyle Bogemans' high-volume approach</CardDescription>
+          <CardDescription>Based on Kyle Bogemans&apos; high-volume approach</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div>
@@ -165,7 +165,7 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
           <DialogHeader>
             <DialogTitle>Reset All Data?</DialogTitle>
             <DialogDescription>
-              This will permanently delete all your movements, sets, and weekly reviews. You'll be
+              This will permanently delete all your movements, sets, and weekly reviews. You&apos;ll be
               redirected to the onboarding flow to start fresh. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>

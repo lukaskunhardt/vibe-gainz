@@ -8,21 +8,36 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, Calendar, Trophy, Target } from "lucide-react";
 import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
-import { formatDate } from "@/lib/utils/date-helpers";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface StatsContentProps {
   userId: string;
 }
 
+interface StatsData {
+  byCategory: Record<MovementCategory, {
+    dailyVolume: Array<{ date: string; reps: number }>;
+    totalSets: number;
+    totalReps: number;
+    avgRPE: number;
+  }>;
+  reviews: Array<{
+    category: MovementCategory;
+    week_start_date: string;
+    recovery_score: number;
+    chosen_daily_target: number;
+  }>;
+}
+
 export function StatsContent({ userId }: StatsContentProps) {
   const [activeTab, setActiveTab] = useState<MovementCategory>("push");
   const [movements, setMovements] = useState<Movement[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const loadStats = async () => {
@@ -66,8 +81,17 @@ export function StatsContent({ userId }: StatsContentProps) {
     }
   };
 
-  const processStats = (sets: WorkoutSet[], movements: Movement[], reviews: any[]) => {
-    const statsByCategory: Record<MovementCategory, any> = {
+  const processStats = (
+    sets: WorkoutSet[],
+    movements: Movement[],
+    reviews: Array<{ category: MovementCategory; week_start_date: string; recovery_score: number; chosen_daily_target: number }>
+  ): StatsData => {
+    const statsByCategory: Record<MovementCategory, {
+      dailyVolume: Array<{ date: string; reps: number }>;
+      totalSets: number;
+      totalReps: number;
+      avgRPE: number;
+    }> = {
       push: { dailyVolume: [], totalSets: 0, totalReps: 0, avgRPE: 0 },
       pull: { dailyVolume: [], totalSets: 0, totalReps: 0, avgRPE: 0 },
       legs: { dailyVolume: [], totalSets: 0, totalReps: 0, avgRPE: 0 },
@@ -216,7 +240,7 @@ export function StatsContent({ userId }: StatsContentProps) {
               )}
 
               {/* Recovery Score Trend */}
-              {stats?.reviews && stats.reviews.filter((r: any) => r.category === category).length > 0 && (
+              {stats?.reviews && stats.reviews.filter((r) => r.category === category).length > 0 && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Recovery Score Trend</CardTitle>
@@ -226,8 +250,8 @@ export function StatsContent({ userId }: StatsContentProps) {
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart
                         data={stats.reviews
-                          .filter((r: any) => r.category === category)
-                          .map((r: any) => ({
+                          .filter((r) => r.category === category)
+                          .map((r) => ({
                             week: r.week_start_date,
                             score: r.recovery_score,
                             target: r.chosen_daily_target,

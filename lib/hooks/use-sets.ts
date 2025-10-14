@@ -52,6 +52,7 @@ export function useSets(userId?: string, category?: MovementCategory, date?: Dat
     };
 
     fetchSets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, category, date?.toISOString()]);
 
   return { sets, loading, error };
@@ -112,6 +113,7 @@ export function useWeekSets(
     };
 
     fetchSets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, category, weekStartDate?.toISOString()]);
 
   return { sets, loading, error };

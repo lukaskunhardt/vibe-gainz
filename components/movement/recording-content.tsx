@@ -24,7 +24,12 @@ interface RecordingContentProps {
 
 export function RecordingContent({ userId, category, isMaxEffort }: RecordingContentProps) {
   const router = useRouter();
-  const [movement, setMovement] = useState<any>(null);
+  const [movement, setMovement] = useState<{
+    id: string;
+    exercise_variation: string;
+    max_effort_reps: number;
+    daily_target: number;
+  } | null>(null);
   const [todaySets, setTodaySets] = useState<WorkoutSet[]>([]);
   const [reps, setReps] = useState(0);
   const [rpe, setRPE] = useState(7);
@@ -36,6 +41,7 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, category]);
 
   const loadData = async () => {
@@ -123,6 +129,8 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
   };
 
   const saveSet = async (isMaxEffortSet: boolean) => {
+    if (!movement) return;
+    
     setSaving(true);
     try {
       const supabase = createClient();
@@ -154,7 +162,7 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
           nextExercise = shouldAutoProgress(exercise, reps, category);
         }
 
-        const updateData: any = {
+        const updateData: Record<string, string | number> = {
           max_effort_reps: reps,
           max_effort_date: new Date().toISOString(),
           daily_target: newDailyTarget,
@@ -246,7 +254,7 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
           {!isMaxEffort && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Today's Progress</span>
+                <span className="text-sm font-medium">Today&apos;s Progress</span>
                 <span className="text-sm text-muted-foreground">
                   {currentTotal} / {movement.daily_target} reps
                 </span>
@@ -322,7 +330,6 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
       {/* RPE 10 Confirmation Modal */}
       {showRPE10Modal && (
         <RPE10ConfirmationModal
-          reps={reps}
           onMaxEffort={handleMaxEffortConfirm}
           onRegularSet={handleRegularSetConfirm}
           onChangeRPE={() => setShowRPE10Modal(false)}

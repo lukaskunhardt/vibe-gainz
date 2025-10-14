@@ -112,7 +112,7 @@ export function ExerciseInfoContent({ category, exerciseId }: ExerciseInfoConten
             <CardContent>
               <div className="rounded-lg bg-background p-4">
                 <p className="text-sm text-muted-foreground mb-3">
-                  <strong>When you reach 20+ reps on your max effort test,</strong> you'll
+                  <strong>When you reach 20+ reps on your max effort test,</strong> you&apos;ll
                   automatically progress to the next difficulty level. Keep pushing!
                 </p>
                 <div className="flex flex-wrap gap-2">

@@ -13,7 +13,6 @@ import {
   AUTO_PROGRESSION_THRESHOLD,
 } from "@/lib/constants/progression";
 import { getNextDifficultyExercise } from "@/lib/constants/exercises";
-import { parseISO, isSameDay } from "date-fns";
 
 /**
  * Calculate initial daily target from max effort reps

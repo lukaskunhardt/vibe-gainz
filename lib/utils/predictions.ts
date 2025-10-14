@@ -70,7 +70,6 @@ export function suggestRPE(
   }
 
   // Calculate how close to target
-  const remainingReps = targetReps - currentReps;
   const percentComplete = currentReps / targetReps;
 
   // First set should be moderate (RPE 7)
@@ -90,8 +89,8 @@ export function estimateSetsToTarget(
   targetReps: number,
   averageRepsPerSet: number = 10
 ): number {
-  const remainingReps = Math.max(0, targetReps - currentReps);
-  return Math.ceil(remainingReps / averageRepsPerSet);
+  const remaining = Math.max(0, targetReps - currentReps);
+  return Math.ceil(remaining / averageRepsPerSet);
 }
 
 /**
