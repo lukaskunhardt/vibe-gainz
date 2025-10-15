@@ -438,6 +438,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
                   return Array.from({ length: totalCards }).map((_, idx) => {
                     const loggedSet = todaySets[idx];
                     const isNextSet = idx === todaySets.length;
+                    const isBonusSet = idx >= numberOfSets;
                     const isSelected = loggedSet 
                       ? selectedSetId === loggedSet.id 
                       : selectedSetId === null && isEditMode === false && isNextSet;
@@ -458,7 +459,9 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
                           {/* Pencil - appears in top-left on hover */}
                           <Pencil className="h-3.5 w-3.5 text-primary absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                           
-                          <div className="text-xs text-muted-foreground mb-1 group-hover:hidden">Set {idx + 1}</div>
+                          <div className="text-xs text-muted-foreground mb-1 group-hover:hidden">
+                            {isBonusSet ? "Bonus Set" : `Set ${idx + 1}`}
+                          </div>
                           <div className="text-xs text-primary font-medium mb-1 hidden group-hover:block">Edit Set</div>
                           <div className="text-lg font-bold">{loggedSet.reps} reps</div>
                           <div className="text-xs mt-1">
@@ -478,7 +481,9 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
                             isSelected ? "border-primary" : "border-dashed border-muted-foreground/40"
                           } bg-background p-3 text-center cursor-pointer hover:bg-muted/30 transition-colors`}
                         >
-                          <div className="text-xs text-muted-foreground mb-1">Set {idx + 1}</div>
+                          <div className="text-xs text-muted-foreground mb-1">
+                            {isBonusSet ? "Bonus Set" : `Set ${idx + 1}`}
+                          </div>
                           <div className="text-lg font-bold text-foreground">
                             {targetRepsPerSet} reps
                           </div>
@@ -492,7 +497,9 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
                           key={`future-set-${idx}`}
                           className="rounded-lg border-2 border-dashed border-muted-foreground/20 bg-background p-3 text-center opacity-50"
                         >
-                          <div className="text-xs text-muted-foreground mb-1">Set {idx + 1}</div>
+                          <div className="text-xs text-muted-foreground mb-1">
+                            {isBonusSet ? "Bonus Set" : `Set ${idx + 1}`}
+                          </div>
                           <div className="text-lg font-bold text-muted-foreground">
                             {targetRepsPerSet} reps
                           </div>
