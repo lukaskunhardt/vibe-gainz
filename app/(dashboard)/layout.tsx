@@ -1,8 +1,14 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -43,7 +49,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Dumbbell className="h-6 w-6" />
             <span>Vibe Gainz</span>
           </Link>
-          <nav className="flex items-center gap-4">
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-4">
             <Link href="/dashboard">
               <Button variant="ghost" size="sm">
                 Dashboard
@@ -65,6 +73,45 @@ export default async function DashboardLayout({ children }: { children: React.Re
               </Button>
             </form>
           </nav>
+
+          {/* Mobile Navigation */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="sm" className="md:hidden">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left">
+              <nav className="flex flex-col gap-4 mt-8 px-4">
+                <SheetClose asChild>
+                  <Link href="/dashboard">
+                    <Button variant="ghost" className="w-full justify-start">
+                      Dashboard
+                    </Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link href="/stats">
+                    <Button variant="ghost" className="w-full justify-start">
+                      Stats
+                    </Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link href="/settings">
+                    <Button variant="ghost" className="w-full justify-start">
+                      Settings
+                    </Button>
+                  </Link>
+                </SheetClose>
+                <form action={handleSignOut}>
+                  <Button variant="outline" className="w-full" type="submit">
+                    Sign Out
+                  </Button>
+                </form>
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
 
