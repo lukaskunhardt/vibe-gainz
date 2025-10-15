@@ -415,7 +415,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
             <div>
               <h3 className="text-sm font-medium mb-2">Recommended Sets</h3>
               {(() => {
-                const { targetRepsPerSet, numberOfSets } = calculateRecommendedSets(
+                const { targetRepsPerSet } = calculateRecommendedSets(
                   movement.daily_target,
                   movement.max_effort_reps
                 );
@@ -438,7 +438,6 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
                   return Array.from({ length: totalCards }).map((_, idx) => {
                     const loggedSet = todaySets[idx];
                     const isNextSet = idx === todaySets.length;
-                    const isFutureSet = idx > todaySets.length;
                     const isSelected = loggedSet 
                       ? selectedSetId === loggedSet.id 
                       : selectedSetId === null && isEditMode === false && isNextSet;
