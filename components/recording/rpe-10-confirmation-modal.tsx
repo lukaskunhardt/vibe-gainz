@@ -16,7 +16,7 @@ export function RPE10ConfirmationModal({
   onChangeRPE,
 }: RPE10ConfirmationModalProps) {
   return (
-    <Dialog open={true} onOpenChange={() => {}}>
+    <Dialog open={true} onOpenChange={onChangeRPE}>
       <DialogContent className="sm:max-w-md px-4 sm:px-6">
         <DialogHeader>
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-500/10">
