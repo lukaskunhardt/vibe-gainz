@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Trophy, FileText } from "lucide-react";
+import { AlertTriangle, Trophy, FileText, Pencil } from "lucide-react";
 
 interface RPE10ConfirmationModalProps {
   onMaxEffort: () => void;
@@ -17,39 +17,39 @@ export function RPE10ConfirmationModal({
 }: RPE10ConfirmationModalProps) {
   return (
     <Dialog open={true} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md px-4 sm:px-6">
         <DialogHeader>
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-500/10">
             <AlertTriangle className="h-8 w-8 text-orange-500" />
           </div>
-          <DialogTitle className="text-center text-2xl">RPE 10 Detected</DialogTitle>
-          <DialogDescription className="text-center">
+          <DialogTitle className="text-2xl">RPE 10 Detected</DialogTitle>
+          <DialogDescription>
             You selected RPE 10 (max effort). How would you like to log this set?
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <Button
-            variant="default"
-            className="w-full justify-start h-auto py-4"
+            variant="outline"
+            className="w-full justify-start h-auto py-4 whitespace-normal"
             onClick={onMaxEffort}
           >
-            <Trophy className="mr-3 h-5 w-5 flex-shrink-0" />
-            <div className="text-left">
+            <Trophy className="mr-2 h-5 w-5 flex-shrink-0" />
+            <div className="text-left flex-1 min-w-0">
               <div className="font-semibold">Record as Max Effort Test</div>
               <div className="text-xs opacity-90">
-                Update your max reps and recalculate daily targets
+                Update your max reps for benchmarking
               </div>
             </div>
           </Button>
 
           <Button
             variant="outline"
-            className="w-full justify-start h-auto py-4"
+            className="w-full justify-start h-auto py-4 whitespace-normal"
             onClick={onRegularSet}
           >
-            <FileText className="mr-3 h-5 w-5 flex-shrink-0" />
-            <div className="text-left">
+            <FileText className="mr-2 h-5 w-5 flex-shrink-0" />
+            <div className="text-left flex-1 min-w-0">
               <div className="font-semibold">Log as Regular Set</div>
               <div className="text-xs text-muted-foreground">
                 Keep current targets, just log this set
@@ -58,11 +58,17 @@ export function RPE10ConfirmationModal({
           </Button>
 
           <Button
-            variant="ghost"
-            className="w-full"
+            variant="outline"
+            className="w-full justify-start h-auto py-4 whitespace-normal"
             onClick={onChangeRPE}
           >
-            Change RPE
+            <Pencil className="mr-2 h-5 w-5 flex-shrink-0" />
+            <div className="text-left flex-1 min-w-0">
+              <div className="font-semibold">Change RPE</div>
+              <div className="text-xs text-muted-foreground">
+                Select a different RPE value
+              </div>
+            </div>
           </Button>
         </div>
 
