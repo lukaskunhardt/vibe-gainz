@@ -33,7 +33,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
   } | null>(null);
   const [todaySets, setTodaySets] = useState<WorkoutSet[]>([]);
   const [reps, setReps] = useState(0);
-  const [rpe, setRPE] = useState(7);
+  const [rpe, setRPE] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showRPE10Modal, setShowRPE10Modal] = useState(false);
