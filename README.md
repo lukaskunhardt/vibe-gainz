@@ -1,5 +1,7 @@
 ## Project Overview:
 
+github repo: git@github.com:lukaskunhardt/vibe-gainz.git
+
 This is supposed to be a nextjs based app for high volume calisthenics based on Kyle Bogemans (Kboges) training style. the training is based around logging a push, pull and leg calisthenics movement everyday. (For example squats, push ups or pull ups). Movement can be varied during the days, but each category gets the same volume target every day. The app has supabase auth and logs the values for each day. The web app is optimized for mobile, but could be used on a desktop as well.
 
 # Detailed User Flow & Screen Specifications
