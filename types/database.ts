@@ -3,7 +3,6 @@ export type MovementCategory = "push" | "pull" | "legs";
 export interface Profile {
   id: string;
   email: string;
-  onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
 }

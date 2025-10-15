@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Dumbbell, Trash2, AlertTriangle } from "lucide-react";
+import { User, Dumbbell, Trash2, AlertTriangle, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -36,15 +37,9 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
       await supabase.from("weekly_reviews").delete().eq("user_id", userId);
       await supabase.from("sets").delete().eq("user_id", userId);
       await supabase.from("movements").delete().eq("user_id", userId);
-      
-      // Update profile to mark onboarding as incomplete
-      await supabase
-        .from("profiles")
-        .update({ onboarding_completed: false })
-        .eq("id", userId);
 
       toast.success("All data reset successfully");
-      router.push("/onboarding");
+      router.push("/dashboard");
     } catch (error) {
       console.error("Error resetting data:", error);
       toast.error("Failed to reset data. Please try again.");
@@ -78,6 +73,27 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
             <label className="text-sm font-medium text-muted-foreground">User ID</label>
             <p className="text-sm font-mono text-muted-foreground">{userId}</p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Training Guide */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Training Guide
+          </CardTitle>
+          <CardDescription>
+            Review the principles and methodology behind Vibe Gainz
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href="/onboarding">
+            <Button className="w-full sm:w-auto">
+              <BookOpen className="mr-2 h-4 w-4" />
+              View Training Guide
+            </Button>
+          </Link>
         </CardContent>
       </Card>
 
@@ -166,7 +182,7 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
             <DialogTitle>Reset All Data?</DialogTitle>
             <DialogDescription>
               This will permanently delete all your movements, sets, and weekly reviews. You&apos;ll be
-              redirected to the onboarding flow to start fresh. This action cannot be undone.
+              redirected to the dashboard to start fresh. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

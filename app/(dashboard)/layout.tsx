@@ -21,16 +21,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/auth/login");
   }
 
-  // Check if profile exists and if onboarding is completed
+  // Ensure user profile exists
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
 
-  // If no profile or onboarding not completed, redirect to onboarding
-  if (!profile || !profile.onboarding_completed) {
-    redirect("/onboarding");
+  // Create profile if it doesn't exist
+  if (!profile) {
+    await supabase.from("profiles").insert({
+      id: user.id,
+      email: user.email || "",
+    });
   }
 
   const handleSignOut = async () => {
