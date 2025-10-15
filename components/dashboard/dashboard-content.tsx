@@ -22,6 +22,10 @@ interface CategoryProgress {
   targetReps: number;
   isLocked: boolean;
   hasMaxEffortPrompt: boolean;
+  hasMaxEffortToday: boolean;
+  maxEffortRepsToday?: number;
+  previousMaxEffortReps?: number;
+  baselineMaxEffortReps?: number;
   movement?: Movement;
 }
 
@@ -83,21 +87,60 @@ export function DashboardContent({ userId }: DashboardContentProps) {
 
       // Build progress data for each category
       const categories: MovementCategory[] = ["push", "pull", "legs"];
-      const progressData: CategoryProgress[] = categories.map((category) => {
-        const movement = movements?.find((m) => m.category === category);
-        const sets = todaySets?.filter((s) => s.category === category) || [];
-        const currentReps = sets.reduce((sum, set) => sum + set.reps, 0);
-        const prompt = prompts?.find((p) => p.category === category);
+      const progressData: CategoryProgress[] = await Promise.all(
+        categories.map(async (category) => {
+          const movement = movements?.find((m) => m.category === category);
+          const sets = todaySets?.filter((s) => s.category === category) || [];
+          const currentReps = sets.reduce((sum, set) => sum + set.reps, 0);
+          const prompt = prompts?.find((p) => p.category === category);
 
-        return {
-          category,
-          currentReps,
-          targetReps: movement?.daily_target || 0,
-          isLocked: !movement,
-          hasMaxEffortPrompt: !!prompt,
-          movement,
-        };
-      });
+          // Check if max effort was performed today
+          const maxEffortSetToday = sets.find((s) => s.is_max_effort);
+          const hasMaxEffortToday = !!maxEffortSetToday;
+          const maxEffortRepsToday = maxEffortSetToday?.reps;
+
+          let previousMaxEffortReps: number | undefined;
+          let baselineMaxEffortReps: number | undefined;
+
+          // If max effort was performed today, fetch comparison data
+          if (hasMaxEffortToday && movement) {
+            // Get all max effort sets for this category
+            const { data: allMaxEffortSets } = await supabase
+              .from("sets")
+              .select("reps, logged_at")
+              .eq("user_id", userId)
+              .eq("category", category)
+              .eq("is_max_effort", true)
+              .order("logged_at", { ascending: true });
+
+            if (allMaxEffortSets && allMaxEffortSets.length > 0) {
+              // Baseline is the first max effort ever
+              baselineMaxEffortReps = allMaxEffortSets[0].reps;
+              
+              // Previous is the second-to-last max effort (if exists)
+              if (allMaxEffortSets.length > 1) {
+                previousMaxEffortReps = allMaxEffortSets[allMaxEffortSets.length - 2].reps;
+              } else {
+                // If only one max effort exists (today's), use baseline as previous
+                previousMaxEffortReps = baselineMaxEffortReps;
+              }
+            }
+          }
+
+          return {
+            category,
+            currentReps,
+            targetReps: movement?.daily_target || 0,
+            isLocked: !movement,
+            hasMaxEffortPrompt: !!prompt,
+            hasMaxEffortToday,
+            maxEffortRepsToday,
+            previousMaxEffortReps,
+            baselineMaxEffortReps,
+            movement,
+          };
+        })
+      );
 
       setProgress(progressData);
 
@@ -198,6 +241,10 @@ function MovementCard({
   targetReps,
   isLocked,
   hasMaxEffortPrompt,
+  hasMaxEffortToday,
+  maxEffortRepsToday,
+  previousMaxEffortReps,
+  baselineMaxEffortReps,
   movement,
 }: MovementCardProps) {
   const percentage = targetReps > 0 ? Math.min((currentReps / targetReps) * 100, 100) : 0;
@@ -230,9 +277,23 @@ function MovementCard({
     );
   }
 
+  // Calculate differences for max effort indicator
+  const diffFromPrevious = maxEffortRepsToday && previousMaxEffortReps 
+    ? maxEffortRepsToday - previousMaxEffortReps 
+    : 0;
+  const diffFromBaseline = maxEffortRepsToday && baselineMaxEffortReps 
+    ? maxEffortRepsToday - baselineMaxEffortReps 
+    : 0;
+
   return (
-    <Card className={`relative overflow-hidden ${isComplete ? "border-green-500 bg-green-50 dark:bg-green-950/20" : ""}`}>
-      {hasMaxEffortPrompt && (
+    <Card className={`relative overflow-hidden ${
+      hasMaxEffortToday 
+        ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20" 
+        : isComplete 
+        ? "border-green-500 bg-green-50 dark:bg-green-950/20" 
+        : ""
+    }`}>
+      {hasMaxEffortPrompt && !hasMaxEffortToday && (
         <div className="absolute top-2 right-2">
           <Trophy className="h-6 w-6 text-yellow-500 animate-pulse" />
         </div>
@@ -240,24 +301,56 @@ function MovementCard({
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{categoryName}</span>
-          {isComplete && <span className="text-green-500 text-sm font-normal">✓ Complete</span>}
+          {hasMaxEffortToday && <Trophy className="h-5 w-5 text-purple-500" />}
+          {!hasMaxEffortToday && isComplete && <span className="text-green-500 text-sm font-normal">✓ Complete</span>}
         </CardTitle>
         <CardDescription className="truncate">{exerciseName}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-2xl font-bold">
-              {currentReps} / {targetReps}
-            </span>
-            <span className="text-sm text-muted-foreground">{Math.round(percentage)}%</span>
+        {hasMaxEffortToday ? (
+          // Max Effort Indicator
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 mb-2">
+              <Trophy className="h-5 w-5 text-purple-500" />
+              <span className="text-lg font-semibold text-purple-700 dark:text-purple-300">Max Effort Test</span>
+            </div>
+            <div className="text-center py-4 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+              <div className="text-4xl font-bold text-purple-700 dark:text-purple-300 mb-2">
+                {maxEffortRepsToday} reps
+              </div>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                {diffFromPrevious !== 0 && (
+                  <div className={diffFromPrevious > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+                    {diffFromPrevious > 0 ? "+" : ""}{diffFromPrevious} from last test
+                  </div>
+                )}
+                {diffFromBaseline !== 0 && (
+                  <div className={diffFromBaseline > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+                    {diffFromBaseline > 0 ? "+" : ""}{diffFromBaseline} from baseline
+                  </div>
+                )}
+                {diffFromPrevious === 0 && diffFromBaseline === 0 && (
+                  <div className="text-muted-foreground">First max effort test!</div>
+                )}
+              </div>
+            </div>
           </div>
-          <Progress value={percentage} className="h-2" />
-        </div>
+        ) : (
+          // Normal Progress Bar
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-2xl font-bold">
+                {currentReps} / {targetReps}
+              </span>
+              <span className="text-sm text-muted-foreground">{Math.round(percentage)}%</span>
+            </div>
+            <Progress value={percentage} className="h-2" />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-2">
           <Link href={`/movement/${category}/record`}>
-            <Button className="w-full" variant={isComplete ? "outline" : "default"}>
+            <Button className="w-full" variant={isComplete || hasMaxEffortToday ? "outline" : "default"}>
               <Plus className="mr-2 h-4 w-4" />
               Log Set
             </Button>

@@ -7,11 +7,11 @@ export default async function RecordingPage({
   searchParams,
 }: {
   params: Promise<{ category: string }>;
-  searchParams: Promise<{ mode?: string }>;
+  searchParams: Promise<{ mode?: string; exercise?: string }>;
 }) {
   const supabase = await createClient();
   const { category } = await params;
-  const { mode } = await searchParams;
+  const { mode, exercise } = await searchParams;
 
   const {
     data: { user },
@@ -33,6 +33,7 @@ export default async function RecordingPage({
       userId={user.id}
       category={category as "push" | "pull" | "legs"}
       isMaxEffort={isMaxEffort}
+      initialExercise={exercise}
     />
   );
 }

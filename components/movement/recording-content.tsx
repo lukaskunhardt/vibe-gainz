@@ -7,7 +7,7 @@ import { MovementCategory, Set as WorkoutSet } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Minus, Plus, Save, Trophy } from "lucide-react";
+import { ArrowLeft, Minus, Plus, Save, Trophy, Edit } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { predictReps, getPreviousDayFirstSet } from "@/lib/utils/predictions";
@@ -20,9 +20,10 @@ interface RecordingContentProps {
   userId: string;
   category: MovementCategory;
   isMaxEffort: boolean;
+  initialExercise?: string;
 }
 
-export function RecordingContent({ userId, category, isMaxEffort }: RecordingContentProps) {
+export function RecordingContent({ userId, category, isMaxEffort, initialExercise }: RecordingContentProps) {
   const router = useRouter();
   const [movement, setMovement] = useState<{
     id: string;
@@ -57,13 +58,25 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
         .eq("category", category)
         .single();
 
+      // If no movement exists and we're in max effort mode with initialExercise, allow it
       if (!movementData) {
-        toast.error("Movement not configured. Please set it up first.");
-        router.push(`/movement/${category}/select`);
-        return;
+        if (isMaxEffort && initialExercise) {
+          // No movement yet - this is initial setup
+          // Set a temporary movement structure with the selected exercise
+          setMovement({
+            id: "", // Will be created when saving
+            exercise_variation: initialExercise,
+            max_effort_reps: 0,
+            daily_target: 0,
+          });
+        } else {
+          toast.error("Movement not configured. Please set it up first.");
+          router.push(`/movement/${category}/select`);
+          return;
+        }
+      } else {
+        setMovement(movementData);
       }
-
-      setMovement(movementData);
 
       // Fetch today's sets
       const todayStart = new Date();
@@ -92,9 +105,14 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
         .limit(50);
 
       // Predict reps for next set
-      const previousDayFirst = getPreviousDayFirstSet(allSets || [], new Date());
-      const predicted = predictReps(setsData || [], movementData.max_effort_reps, previousDayFirst);
-      setReps(isMaxEffort ? movementData.max_effort_reps : predicted);
+      if (movementData) {
+        const previousDayFirst = getPreviousDayFirstSet(allSets || [], new Date());
+        const predicted = predictReps(setsData || [], movementData.max_effort_reps, previousDayFirst);
+        setReps(isMaxEffort ? movementData.max_effort_reps : predicted);
+      } else {
+        // Initial setup - start with 0
+        setReps(0);
+      }
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Failed to load data");
@@ -135,11 +153,37 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
     try {
       const supabase = createClient();
       const setNumber = todaySets.length + 1;
+      let movementId = movement.id;
+
+      // If max effort and movement doesn't exist yet (initial setup), create it first
+      if ((isMaxEffortSet || isMaxEffort) && !movement.id) {
+        const newDailyTarget = calculateInitialDailyTarget(reps);
+        
+        const { data: newMovement, error: createError } = await supabase
+          .from("movements")
+          .insert({
+            user_id: userId,
+            category,
+            exercise_variation: movement.exercise_variation,
+            max_effort_reps: reps,
+            max_effort_date: new Date().toISOString(),
+            daily_target: newDailyTarget,
+            is_unlocked: true,
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        if (newMovement) {
+          movementId = newMovement.id;
+          setMovement(newMovement);
+        }
+      }
 
       // Insert set
       const { error: setError } = await supabase.from("sets").insert({
         user_id: userId,
-        movement_id: movement.id,
+        movement_id: movementId || null,
         category,
         exercise_variation: movement.exercise_variation,
         reps,
@@ -151,8 +195,8 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
 
       if (setError) throw setError;
 
-      // If max effort, update movement
-      if (isMaxEffortSet || isMaxEffort) {
+      // If max effort and movement already exists, update it
+      if ((isMaxEffortSet || isMaxEffort) && movement.id) {
         const newDailyTarget = calculateInitialDailyTarget(reps);
         const exercise = getExerciseById(movement.exercise_variation);
         
@@ -197,9 +241,15 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
       // Reload data
       await loadData();
 
-      // Check if daily target is reached
+      // Check if daily target is reached (use the latest movement data)
+      const currentMovement = movement.id ? movement : { ...movement, daily_target: calculateInitialDailyTarget(reps) };
       const newTotal = todaySets.reduce((sum, s) => sum + s.reps, 0) + reps;
-      if (newTotal >= movement.daily_target) {
+      
+      // For max effort sets, always redirect to dashboard
+      if (isMaxEffortSet || isMaxEffort) {
+        toast.success("🎉 Max effort recorded! Check the dashboard.");
+        setTimeout(() => router.push("/dashboard"), 1500);
+      } else if (newTotal >= (currentMovement.daily_target || 0)) {
         toast.success("🎉 Daily target reached! Great work!");
         setTimeout(() => router.push("/dashboard"), 1500);
       }
@@ -247,7 +297,17 @@ export function RecordingContent({ userId, category, isMaxEffort }: RecordingCon
             {isMaxEffort && <Trophy className="h-6 w-6 text-yellow-500" />}
             {isMaxEffort ? "Max Effort Test" : "Log Set"} - {categoryName}
           </CardTitle>
-          <CardDescription>{exerciseName}</CardDescription>
+          <div className="flex items-center justify-between">
+            <CardDescription>{exerciseName}</CardDescription>
+            {!isMaxEffort && (
+              <Link href={`/movement/${category}/select`}>
+                <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs">
+                  <Edit className="h-3 w-3 mr-1" />
+                  Change Exercise
+                </Button>
+              </Link>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Progress */}
