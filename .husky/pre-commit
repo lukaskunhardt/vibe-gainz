@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+
+echo "husky - running pre-commit checks"
+
+# Lint must pass (errors block commit)
+pnpm lint
+if [ $? -ne 0 ]; then
+  echo "\nLint errors detected. Aborting commit."
+  exit 1
+fi
+
+# Enforce formatting (non-blocking errors will be reported by Prettier)
+pnpm format:check
+if [ $? -ne 0 ]; then
+  echo "\nPrettier check failed. Run 'pnpm format' to fix."
+  exit 1
+fi
+
+exit 0
+
