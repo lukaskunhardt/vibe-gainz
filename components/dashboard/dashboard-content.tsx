@@ -13,6 +13,8 @@ import { format, startOfDay, endOfDay, parseISO, isSameDay, addDays } from "date
 import { useSearchParams } from "next/navigation";
 import { MaxEffortPromptModal } from "./max-effort-prompt-modal";
 import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
+import { StatsContent } from "@/components/stats/stats-content";
+import { useIsDesktop } from "@/lib/hooks/use-media-query";
 
 interface DashboardContentProps {
   userId: string;
@@ -38,6 +40,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
   const [loading, setLoading] = useState(true);
   const [activePrompt, setActivePrompt] = useState<MaxEffortPrompt | null>(null);
   const [needsWeeklyReview, setNeedsWeeklyReview] = useState<MovementCategory[]>([]);
+  const isDesktop = useIsDesktop();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get("date");
   const selectedDate = dateParam ? parseISO(dateParam) : new Date();
@@ -247,6 +250,11 @@ export function DashboardContent({ userId }: DashboardContentProps) {
           <MovementCard key={item.category} {...item} onRefresh={loadDashboardData} />
         ))}
       </div>
+
+      {/* Desktop-only: Render stats below movement cards */}
+      {isDesktop && (
+        <StatsContent userId={userId} />
+      )}
 
       {/* Max Effort Prompt Modal */}
       {activePrompt && (
