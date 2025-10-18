@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { createClient } from "@/lib/supabase/client";
 
 export function HeaderRight() {
   const [showFull, setShowFull] = useState(true);
@@ -52,13 +51,6 @@ export function HeaderRight() {
     };
   }, [recalc]);
 
-  const supabase = useMemo(() => createClient(), []);
-
-  const onSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/auth/login";
-  };
-
   const FullNavContent = (
     <div className="flex items-center gap-4">
       <Link href="/dashboard">
@@ -81,9 +73,6 @@ export function HeaderRight() {
           Settings
         </Button>
       </Link>
-      <Button variant="outline" size="sm" onClick={onSignOut}>
-        Sign Out
-      </Button>
     </div>
   );
 
@@ -125,9 +114,6 @@ export function HeaderRight() {
                 </Button>
               </Link>
             </SheetClose>
-            <Button variant="outline" className="w-full" onClick={onSignOut}>
-              Sign Out
-            </Button>
           </nav>
         </SheetContent>
       </Sheet>

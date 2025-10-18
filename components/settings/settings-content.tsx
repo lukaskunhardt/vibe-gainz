@@ -6,7 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Dumbbell, Trash2, AlertTriangle, BookOpen } from "lucide-react";
+import { User, Dumbbell, Trash2, AlertTriangle, BookOpen, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -26,6 +26,21 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
   const router = useRouter();
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      setSigningOut(true);
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/auth/login");
+    } catch (err) {
+      console.error("Error signing out:", err);
+      toast.error("Failed to sign out. Please try again.")
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   const handleResetData = async () => {
     setResetting(true);
@@ -123,6 +138,23 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
         </CardContent>
       </Card>
 
+      {/* Account Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LogOut className="h-5 w-5" />
+            Account Actions
+          </CardTitle>
+          <CardDescription>Sign out of your account</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" onClick={handleSignOut} className="w-full sm:w-auto">
+            <LogOut className="mr-2 h-4 w-4" />
+            {signingOut ? "Signing out..." : "Sign Out"}
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Training Methodology */}
       <Card>
         <CardHeader>
@@ -198,4 +230,3 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
     </div>
   );
 }
-
