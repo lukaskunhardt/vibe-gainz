@@ -9,6 +9,13 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# TypeScript typecheck must pass
+pnpm typecheck
+if [ $? -ne 0 ]; then
+  echo "\nType errors detected. Aborting commit. Run 'pnpm typecheck' locally."
+  exit 1
+fi
+
 # Enforce formatting (non-blocking errors will be reported by Prettier)
 pnpm format:check
 if [ $? -ne 0 ]; then
@@ -17,4 +24,3 @@ if [ $? -ne 0 ]; then
 fi
 
 exit 0
-

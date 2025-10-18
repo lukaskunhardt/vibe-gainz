@@ -5,6 +5,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
