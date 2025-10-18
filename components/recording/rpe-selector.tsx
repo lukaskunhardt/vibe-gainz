@@ -1,6 +1,7 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
+import { colorForRPE } from "@/lib/constants/rpe";
 
 interface RPESelectorProps {
   value: number;
@@ -28,23 +29,21 @@ export function RPESelector({ value, onChange }: RPESelectorProps) {
         {[...Array(10)].map((_, idx) => {
           const rpeValue = idx + 1;
           const isSelected = value === rpeValue;
+          const color = colorForRPE(rpeValue);
+          const textOnColor = rpeValue >= 9 ? "text-white" : "text-foreground";
           
           return (
             <button
               key={rpeValue}
               type="button"
               onClick={() => onChange(rpeValue)}
-              className={`
-                p-3 rounded-lg border-2 transition-all
-                ${isSelected
-                  ? "border-primary bg-primary text-primary-foreground font-bold scale-105"
-                  : "border-border hover:border-primary/50"
-                }
-                ${rpeValue >= 8 ? "bg-orange-50 dark:bg-orange-950/20" : ""}
-                ${rpeValue === 10 ? "bg-red-50 dark:bg-red-950/20" : ""}
-              `}
+              className={`p-3 rounded-lg border-2 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              style={{
+                borderColor: color,
+                backgroundColor: isSelected ? color : undefined,
+              }}
             >
-              <div className="text-2xl font-bold">{rpeValue}</div>
+              <div className={`text-2xl font-bold ${isSelected ? textOnColor : ""}`}>{rpeValue}</div>
             </button>
           );
         })}
@@ -59,4 +58,3 @@ export function RPESelector({ value, onChange }: RPESelectorProps) {
     </div>
   );
 }
-

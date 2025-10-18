@@ -14,6 +14,7 @@ import { calculateInitialDailyTarget, shouldAutoProgress } from "@/lib/utils/cal
 import { RPESelector } from "@/components/recording/rpe-selector";
 import { RPE10ConfirmationModal } from "@/components/recording/rpe-10-confirmation-modal";
 import { EXERCISE_VARIATIONS, getExerciseById } from "@/lib/constants/exercises";
+import { colorForRPE } from "@/lib/constants/rpe";
 
 interface RecordingContentProps {
   userId: string;
@@ -457,9 +458,19 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
                           <div className="text-xs text-primary font-medium mb-1 hidden group-hover:block">Edit Set</div>
                           <div className="text-lg font-bold">{loggedSet.reps} reps</div>
                           <div className="text-xs mt-1">
-                            <span className="inline-block bg-primary/20 text-primary px-2 py-0.5 rounded text-xs">
-                              RPE {loggedSet.rpe}
-                            </span>
+                            {(() => {
+                              const c = colorForRPE(loggedSet.rpe, loggedSet.is_max_effort);
+                              const textOnColor = loggedSet.rpe >= 9 || loggedSet.is_max_effort ? "#FFFFFF" : undefined;
+                              return (
+                                <span
+                                  className="inline-block px-2 py-0.5 rounded text-xs"
+                                  style={{ backgroundColor: c, color: textOnColor }}
+                                >
+                                  RPE {loggedSet.rpe}
+                                  {loggedSet.is_max_effort ? " • Max" : ""}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       );

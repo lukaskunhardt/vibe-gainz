@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Dumbbell, TrendingUp, Target, ArrowRight, ArrowLeft, Gauge, Activity, Calendar } from "lucide-react";
+import { colorForRPE } from "@/lib/constants/rpe";
 
 type OnboardingStep = "welcome" | "volume-targets" | "rpe-quality" | "fatigue-stimulus" | "recovery-progression" | "get-started";
 
@@ -227,37 +228,46 @@ function RPEQualityScreen() {
 }
 
 function RPEGauge() {
+  // Uses app-wide RPE color mapping for consistency
+
   const rpeData = [
-    { value: 1, label: "Very Easy", color: "bg-green-200 dark:bg-green-900", textColor: "text-green-900 dark:text-green-100" },
-    { value: 2, label: "Easy", color: "bg-green-300 dark:bg-green-800", textColor: "text-green-900 dark:text-green-100" },
-    { value: 3, label: "Moderate", color: "bg-green-400 dark:bg-green-700", textColor: "text-green-900 dark:text-green-100" },
-    { value: 4, label: "Somewhat Hard", color: "bg-lime-400 dark:bg-lime-700", textColor: "text-lime-900 dark:text-lime-100" },
-    { value: 5, label: "Hard", color: "bg-yellow-400 dark:bg-yellow-700", textColor: "text-yellow-900 dark:text-yellow-100" },
-    { value: 6, label: "Hard+", color: "bg-yellow-500 dark:bg-yellow-600", textColor: "text-yellow-900 dark:text-yellow-100" },
-    { value: 7, label: "Very Hard", color: "bg-orange-400 dark:bg-orange-700", textColor: "text-orange-900 dark:text-orange-100" },
-    { value: 8, label: "Very Hard+", color: "bg-orange-500 dark:bg-orange-600", textColor: "text-orange-900 dark:text-orange-100" },
-    { value: 9, label: "Near Failure", color: "bg-red-500 dark:bg-red-700", textColor: "text-red-900 dark:text-red-100" },
-    { value: 10, label: "Complete Failure", color: "bg-red-600 dark:bg-red-800", textColor: "text-white" },
+    { value: 1, label: "Very Easy" },
+    { value: 2, label: "Easy" },
+    { value: 3, label: "Moderate" },
+    { value: 4, label: "Somewhat Hard" },
+    { value: 5, label: "Hard" },
+    { value: 6, label: "Hard+" },
+    { value: 7, label: "Very Hard" },
+    { value: 8, label: "Very Hard+" },
+    { value: 9, label: "Near Failure" },
+    { value: 10, label: "Complete Failure" },
   ];
 
   return (
     <div className="space-y-2">
-      {rpeData.map((rpe) => (
-        <div key={rpe.value} className="flex items-center gap-3">
-          <div className={`w-12 h-8 rounded flex items-center justify-center font-bold ${rpe.color} ${rpe.textColor}`}>
-            {rpe.value}
+      {rpeData.map((rpe) => {
+        const bg = colorForRPE(rpe.value);
+        const text = rpe.value >= 9 ? "text-white" : "text-foreground";
+        return (
+          <div key={rpe.value} className="flex items-center gap-3">
+            <div
+              className={`w-12 h-8 rounded flex items-center justify-center font-bold ${text}`}
+              style={{ backgroundColor: bg }}
+            >
+              {rpe.value}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">{rpe.label}</p>
+              {rpe.value === 8 && (
+                <p className="text-xs text-muted-foreground">Target for first set</p>
+              )}
+              {rpe.value === 10 && (
+                <p className="text-xs text-muted-foreground">Max effort tests only</p>
+              )}
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">{rpe.label}</p>
-            {rpe.value === 8 && (
-              <p className="text-xs text-muted-foreground">Target for first set</p>
-            )}
-            {rpe.value === 10 && (
-              <p className="text-xs text-muted-foreground">Max effort tests only</p>
-            )}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
