@@ -1,14 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { Dumbbell, Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Dumbbell } from "lucide-react";
+import { HeaderRight } from "@/components/dashboard/header-right";
+import { DateNav } from "@/components/dashboard/date-nav";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -22,11 +17,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   // Ensure user profile exists
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
 
   // Create profile if it doesn't exist
   if (!profile) {
@@ -36,102 +27,39 @@ export default async function DashboardLayout({ children }: { children: React.Re
     });
   }
 
-  const handleSignOut = async () => {
-    "use server";
-    const supabase = await createClient();
-    await supabase.auth.signOut();
-    redirect("/auth/login");
-  };
+  // Note: Sign-out handled in client via HeaderRight
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       {/* Header */}
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl">
+        <div
+          id="header-grid"
+          className="container mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 py-4"
+        >
+          <Link
+            id="header-brand"
+            href="/dashboard"
+            className="flex items-center gap-2 justify-self-start text-xl font-bold"
+          >
             <Dumbbell className="h-6 w-6" />
             <span>Vibe Gainz</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm">
-                Dashboard
-              </Button>
-            </Link>
-            <Link href="/friends">
-              <Button variant="ghost" size="sm">
-                Friends
-              </Button>
-            </Link>
-            <Link href="/stats">
-              <Button variant="ghost" size="sm">
-                Stats
-              </Button>
-            </Link>
-            <Link href="/settings">
-              <Button variant="ghost" size="sm">
-                Settings
-              </Button>
-            </Link>
-            <form action={handleSignOut}>
-              <Button variant="outline" size="sm" type="submit">
-                Sign Out
-              </Button>
-            </form>
-          </nav>
+          {/* Center-aligned compact date navigator (dashboard only) */}
+          <div id="header-date" className="justify-self-center">
+            <DateNav id="header-date-inner" />
+          </div>
 
-          {/* Mobile Navigation */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="sm" className="md:hidden">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-              <nav className="flex flex-col gap-4 mt-8 px-4">
-                <SheetClose asChild>
-                  <Link href="/dashboard">
-                    <Button variant="ghost" className="w-full justify-start">
-                      Dashboard
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="/stats">
-                    <Button variant="ghost" className="w-full justify-start">
-                      Stats
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="/friends">
-                    <Button variant="ghost" className="w-full justify-start">
-                      Friends
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="/settings">
-                    <Button variant="ghost" className="w-full justify-start">
-                      Settings
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <form action={handleSignOut}>
-                  <Button variant="outline" className="w-full" type="submit">
-                    Sign Out
-                  </Button>
-                </form>
-              </nav>
-            </SheetContent>
-          </Sheet>
+          {/* Right side: responsive nav that collapses when space is insufficient */}
+          <div className="justify-self-end">
+            <HeaderRight />
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
+      <main className="container mx-auto flex-1 px-4 py-6">{children}</main>
     </div>
   );
 }

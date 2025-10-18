@@ -8,7 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Lock, Trophy, Plus, Info } from "lucide-react";
-import { getTodayStart, getTodayEnd, isTodayMonday, getPreviousWeekStart } from "@/lib/utils/date-helpers";
+import { isTodayMonday, getPreviousWeekStart } from "@/lib/utils/date-helpers";
+import { format, startOfDay, endOfDay, parseISO } from "date-fns";
+import { useSearchParams } from "next/navigation";
 import { MaxEffortPromptModal } from "./max-effort-prompt-modal";
 import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
 
@@ -27,6 +29,7 @@ interface CategoryProgress {
   previousMaxEffortReps?: number;
   baselineMaxEffortReps?: number;
   movement?: Movement;
+  streakDays?: number;
 }
 
 export function DashboardContent({ userId }: DashboardContentProps) {
@@ -34,11 +37,14 @@ export function DashboardContent({ userId }: DashboardContentProps) {
   const [loading, setLoading] = useState(true);
   const [activePrompt, setActivePrompt] = useState<MaxEffortPrompt | null>(null);
   const [needsWeeklyReview, setNeedsWeeklyReview] = useState<MovementCategory[]>([]);
+  const searchParams = useSearchParams();
+  const dateParam = searchParams.get("date");
+  const selectedDate = dateParam ? parseISO(dateParam) : new Date();
 
   useEffect(() => {
     loadDashboardData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, dateParam]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -51,16 +57,16 @@ export function DashboardContent({ userId }: DashboardContentProps) {
         .select("*")
         .eq("user_id", userId);
 
-      // Fetch today's sets
-      const todayStart = getTodayStart();
-      const todayEnd = getTodayEnd();
+      // Fetch sets for selected day
+      const dayStart = startOfDay(selectedDate);
+      const dayEnd = endOfDay(selectedDate);
 
       const { data: todaySets } = await supabase
         .from("sets")
         .select("*")
         .eq("user_id", userId)
-        .gte("logged_at", todayStart.toISOString())
-        .lte("logged_at", todayEnd.toISOString());
+        .gte("logged_at", dayStart.toISOString())
+        .lte("logged_at", dayEnd.toISOString());
 
       // Fetch active max effort prompts
       const { data: prompts } = await supabase
@@ -116,7 +122,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
             if (allMaxEffortSets && allMaxEffortSets.length > 0) {
               // Baseline is the first max effort ever
               baselineMaxEffortReps = allMaxEffortSets[0].reps;
-              
+
               // Previous is the second-to-last max effort (if exists)
               if (allMaxEffortSets.length > 1) {
                 previousMaxEffortReps = allMaxEffortSets[allMaxEffortSets.length - 2].reps;
@@ -126,6 +132,18 @@ export function DashboardContent({ userId }: DashboardContentProps) {
               }
             }
           }
+
+          // Compute streak for this category as of selected day (inclusive)
+          let streakDays = 0;
+          try {
+            const { data: streakValue } = await supabase.rpc("get_category_streak", {
+              p_category: category,
+              p_target_date: format(dayStart, "yyyy-MM-dd"),
+            });
+            if (typeof streakValue === "number") {
+              streakDays = streakValue;
+            }
+          } catch {}
 
           return {
             category,
@@ -138,6 +156,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
             previousMaxEffortReps,
             baselineMaxEffortReps,
             movement,
+            streakDays,
           };
         })
       );
@@ -159,10 +178,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
     if (!activePrompt) return;
 
     const supabase = createClient();
-    await supabase
-      .from("max_effort_prompts")
-      .update({ dismissed: true })
-      .eq("id", activePrompt.id);
+    await supabase.from("max_effort_prompts").update({ dismissed: true }).eq("id", activePrompt.id);
 
     setActivePrompt(null);
     loadDashboardData();
@@ -175,9 +191,9 @@ export function DashboardContent({ userId }: DashboardContentProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
           <p className="text-muted-foreground">Loading your dashboard...</p>
         </div>
       </div>
@@ -246,13 +262,15 @@ function MovementCard({
   previousMaxEffortReps,
   baselineMaxEffortReps,
   movement,
+  streakDays,
 }: MovementCardProps) {
   const percentage = targetReps > 0 ? Math.min((currentReps / targetReps) * 100, 100) : 0;
   const isComplete = currentReps >= targetReps;
 
   const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
   const exerciseName = movement
-    ? EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name || movement.exercise_variation
+    ? EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name ||
+      movement.exercise_variation
     : "";
 
   if (isLocked) {
@@ -278,31 +296,38 @@ function MovementCard({
   }
 
   // Calculate differences for max effort indicator
-  const diffFromPrevious = maxEffortRepsToday && previousMaxEffortReps 
-    ? maxEffortRepsToday - previousMaxEffortReps 
-    : 0;
-  const diffFromBaseline = maxEffortRepsToday && baselineMaxEffortReps 
-    ? maxEffortRepsToday - baselineMaxEffortReps 
-    : 0;
+  const diffFromPrevious =
+    maxEffortRepsToday && previousMaxEffortReps ? maxEffortRepsToday - previousMaxEffortReps : 0;
+  const diffFromBaseline =
+    maxEffortRepsToday && baselineMaxEffortReps ? maxEffortRepsToday - baselineMaxEffortReps : 0;
 
   return (
-    <Card className={`relative overflow-hidden ${
-      hasMaxEffortToday 
-        ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20" 
-        : isComplete 
-        ? "border-green-500 bg-green-50 dark:bg-green-950/20" 
-        : ""
-    }`}>
+    <Card
+      className={`relative overflow-hidden ${
+        hasMaxEffortToday
+          ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20"
+          : isComplete
+            ? "border-green-500 bg-green-50 dark:bg-green-950/20"
+            : ""
+      }`}
+    >
       {hasMaxEffortPrompt && !hasMaxEffortToday && (
-        <div className="absolute top-2 right-2">
-          <Trophy className="h-6 w-6 text-yellow-500 animate-pulse" />
+        <div className="absolute right-2 top-2">
+          <Trophy className="h-6 w-6 animate-pulse text-yellow-500" />
         </div>
       )}
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{categoryName}</span>
-          {hasMaxEffortToday && <Trophy className="h-5 w-5 text-purple-500" />}
-          {!hasMaxEffortToday && isComplete && <span className="text-green-500 text-sm font-normal">✓ Complete</span>}
+          <div className="flex items-center gap-2">
+            {typeof streakDays === "number" && streakDays > 0 && (
+              <span className="text-xs text-muted-foreground">Streak {streakDays}</span>
+            )}
+            {hasMaxEffortToday && <Trophy className="h-5 w-5 text-purple-500" />}
+            {!hasMaxEffortToday && isComplete && (
+              <span className="text-sm font-normal text-green-500">✓ Complete</span>
+            )}
+          </div>
         </CardTitle>
         <CardDescription className="truncate">{exerciseName}</CardDescription>
       </CardHeader>
@@ -310,23 +335,39 @@ function MovementCard({
         {hasMaxEffortToday ? (
           // Max Effort Indicator
           <div className="space-y-2">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="mb-2 flex items-center gap-2">
               <Trophy className="h-5 w-5 text-purple-500" />
-              <span className="text-lg font-semibold text-purple-700 dark:text-purple-300">Max Effort Test</span>
+              <span className="text-lg font-semibold text-purple-700 dark:text-purple-300">
+                Max Effort Test
+              </span>
             </div>
-            <div className="text-center py-4 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <div className="text-4xl font-bold text-purple-700 dark:text-purple-300 mb-2">
+            <div className="rounded-lg bg-purple-100 py-4 text-center dark:bg-purple-900/30">
+              <div className="mb-2 text-4xl font-bold text-purple-700 dark:text-purple-300">
                 {maxEffortRepsToday} reps
               </div>
               <div className="space-y-1 text-sm text-muted-foreground">
                 {diffFromPrevious !== 0 && (
-                  <div className={diffFromPrevious > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
-                    {diffFromPrevious > 0 ? "+" : ""}{diffFromPrevious} from last test
+                  <div
+                    className={
+                      diffFromPrevious > 0
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    }
+                  >
+                    {diffFromPrevious > 0 ? "+" : ""}
+                    {diffFromPrevious} from last test
                   </div>
                 )}
                 {diffFromBaseline !== 0 && (
-                  <div className={diffFromBaseline > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
-                    {diffFromBaseline > 0 ? "+" : ""}{diffFromBaseline} from baseline
+                  <div
+                    className={
+                      diffFromBaseline > 0
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                    }
+                  >
+                    {diffFromBaseline > 0 ? "+" : ""}
+                    {diffFromBaseline} from baseline
                   </div>
                 )}
                 {diffFromPrevious === 0 && diffFromBaseline === 0 && (
@@ -338,7 +379,7 @@ function MovementCard({
         ) : (
           // Normal Progress Bar
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2 flex items-center justify-between">
               <span className="text-2xl font-bold">
                 {currentReps} / {targetReps}
               </span>
@@ -350,7 +391,10 @@ function MovementCard({
 
         <div className="grid grid-cols-2 gap-2">
           <Link href={`/movement/${category}/record`}>
-            <Button className="w-full" variant={isComplete || hasMaxEffortToday ? "outline" : "default"}>
+            <Button
+              className="w-full"
+              variant={isComplete || hasMaxEffortToday ? "outline" : "default"}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Log Set
             </Button>
@@ -366,4 +410,3 @@ function MovementCard({
     </Card>
   );
 }
-
