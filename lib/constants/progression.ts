@@ -32,16 +32,9 @@ export const RPE_EFFICIENCY_SCORING = {
   FULL_POINTS_RPE: 7,
 } as const;
 
-// Rep prediction constants
-export const REP_PREDICTION = {
-  FIRST_SET_PERCENTAGE: 0.8, // 80% of max effort for first set
-  SET_DECREMENT: 3, // Reduce by 3 reps for subsequent sets
-} as const;
-
 // Weekly review constants
 export const WEEKLY_REVIEW = {
   REVIEW_DAY: 1, // Monday (0 = Sunday, 1 = Monday, etc.)
   DAYS_IN_WEEK: 7,
   MINIMUM_DAYS_FOR_REVIEW: 4, // Minimum training days to generate review
 } as const;
-

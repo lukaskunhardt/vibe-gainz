@@ -10,7 +10,6 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Minus, Plus, Save, Trophy, Edit, Check, Trash2, Pencil } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { predictReps, getPreviousDayFirstSet } from "@/lib/utils/predictions";
 import { calculateInitialDailyTarget, shouldAutoProgress } from "@/lib/utils/calculations";
 import { RPESelector } from "@/components/recording/rpe-selector";
 import { RPE10ConfirmationModal } from "@/components/recording/rpe-10-confirmation-modal";
@@ -104,20 +103,13 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
 
       setTodaySets(setsData || []);
 
-      // Fetch all sets for prediction
-      const { data: allSets } = await supabase
-        .from("sets")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("category", category)
-        .order("logged_at", { ascending: false })
-        .limit(50);
-
-      // Predict reps for next set
+      // Prefill reps strictly to planned per-set target (no discounts)
       if (movementData) {
-        const previousDayFirst = getPreviousDayFirstSet(allSets || [], new Date());
-        const predicted = predictReps(setsData || [], movementData.max_effort_reps, previousDayFirst);
-        setReps(isMaxEffort ? movementData.max_effort_reps : predicted);
+        const { targetRepsPerSet } = calculateRecommendedSets(
+          movementData.daily_target,
+          movementData.max_effort_reps
+        );
+        setReps(isMaxEffort ? movementData.max_effort_reps : targetRepsPerSet);
       } else {
         // Initial setup - start with 0
         setReps(0);
@@ -585,4 +577,3 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
     </div>
   );
 }
-

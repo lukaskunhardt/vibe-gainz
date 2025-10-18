@@ -257,7 +257,7 @@ This is supposed to be a nextjs based app for high volume calisthenics based on 
   - Large number display with predicted value
   - Prediction logic:
     - First set of day: previous day's first set OR (if not present) max effort × 0.8
-    - Subsequent sets: previous set - 2-3 reps (fatigue adjustment)
+    - Prefill: always use planned per-set reps (no discounting)
   - Plus button (right, large)
   - Minus button (left, large)
   - Tap number to open keyboard
@@ -888,25 +888,9 @@ export function shouldAutoProgress(exercise: Exercise, lastMaxEffort: number): E
 }
 ```
 
-### Prediction Utilities (`lib/utils/predictions.ts`)
+### Rep Prefill
 
-```typescript
-// Predict reps for next set
-export function predictReps(
-  setsToday: Set[],
-  maxEffortReps: number,
-  previousDayFirstSet?: number
-): number {
-  if (setsToday.length === 0) {
-    // First set of the day
-    return previousDayFirstSet ?? Math.floor(maxEffortReps * 0.8);
-  }
-  
-  // Subsequent sets: previous set - 2-3 reps
-  const lastSet = setsToday[setsToday.length - 1];
-  return Math.max(1, lastSet.reps - 3);
-}
-```
+Planned sets determine prefill values. The UI pre-fills the rep counter with the planned per-set target for each set. No fatigue-based discounts or dynamic predictions are applied.
 
 ### Authentication Flow
 
