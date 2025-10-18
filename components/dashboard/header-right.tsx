@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu } from "lucide-react";
+import { Menu, LayoutDashboard, Users, BarChart2, Settings as SettingsIcon } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export function HeaderRight() {
@@ -55,21 +55,25 @@ export function HeaderRight() {
     <div className="flex items-center gap-4">
       <Link href="/dashboard">
         <Button variant="ghost" size="sm">
+          <LayoutDashboard className="mr-2 h-4 w-4" />
           Dashboard
         </Button>
       </Link>
       <Link href="/friends">
         <Button variant="ghost" size="sm">
+          <Users className="mr-2 h-4 w-4" />
           Friends
         </Button>
       </Link>
       <Link href="/stats">
         <Button variant="ghost" size="sm">
+          <BarChart2 className="mr-2 h-4 w-4" />
           Stats
         </Button>
       </Link>
       <Link href="/settings">
         <Button variant="ghost" size="sm">
+          <SettingsIcon className="mr-2 h-4 w-4" />
           Settings
         </Button>
       </Link>
@@ -89,6 +93,7 @@ export function HeaderRight() {
             <SheetClose asChild>
               <Link href="/dashboard">
                 <Button variant="ghost" className="w-full justify-start">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
                   Dashboard
                 </Button>
               </Link>
@@ -96,6 +101,7 @@ export function HeaderRight() {
             <SheetClose asChild>
               <Link href="/stats">
                 <Button variant="ghost" className="w-full justify-start">
+                  <BarChart2 className="mr-2 h-4 w-4" />
                   Stats
                 </Button>
               </Link>
@@ -103,6 +109,7 @@ export function HeaderRight() {
             <SheetClose asChild>
               <Link href="/friends">
                 <Button variant="ghost" className="w-full justify-start">
+                  <Users className="mr-2 h-4 w-4" />
                   Friends
                 </Button>
               </Link>
@@ -110,6 +117,7 @@ export function HeaderRight() {
             <SheetClose asChild>
               <Link href="/settings">
                 <Button variant="ghost" className="w-full justify-start">
+                  <SettingsIcon className="mr-2 h-4 w-4" />
                   Settings
                 </Button>
               </Link>
