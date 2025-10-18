@@ -7,9 +7,9 @@ import { Movement, MovementCategory, MaxEffortPrompt } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Lock, Trophy, Plus, Info } from "lucide-react";
+import { Lock, Trophy, Plus, Info, CheckCircle, Flame } from "lucide-react";
 import { isTodayMonday, getPreviousWeekStart } from "@/lib/utils/date-helpers";
-import { format, startOfDay, endOfDay, parseISO } from "date-fns";
+import { format, startOfDay, endOfDay, parseISO, isSameDay, addDays } from "date-fns";
 import { useSearchParams } from "next/navigation";
 import { MaxEffortPromptModal } from "./max-effort-prompt-modal";
 import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
@@ -30,6 +30,7 @@ interface CategoryProgress {
   baselineMaxEffortReps?: number;
   movement?: Movement;
   streakDays?: number;
+  streakPrevDays?: number;
 }
 
 export function DashboardContent({ userId }: DashboardContentProps) {
@@ -135,6 +136,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
 
           // Compute streak for this category as of selected day (inclusive)
           let streakDays = 0;
+          let streakPrevDays: number | undefined = undefined;
           try {
             const { data: streakValue } = await supabase.rpc("get_category_streak", {
               p_category: category,
@@ -142,6 +144,16 @@ export function DashboardContent({ userId }: DashboardContentProps) {
             });
             if (typeof streakValue === "number") {
               streakDays = streakValue;
+            }
+            // If viewing today, also compute yesterday's streak for preview
+            if (isSameDay(dayStart, startOfDay(new Date()))) {
+              const { data: streakPrev } = await supabase.rpc("get_category_streak", {
+                p_category: category,
+                p_target_date: format(addDays(dayStart, -1), "yyyy-MM-dd"),
+              });
+              if (typeof streakPrev === "number") {
+                streakPrevDays = streakPrev;
+              }
             }
           } catch {}
 
@@ -157,6 +169,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
             baselineMaxEffortReps,
             movement,
             streakDays,
+            streakPrevDays,
           };
         })
       );
@@ -263,6 +276,7 @@ function MovementCard({
   baselineMaxEffortReps,
   movement,
   streakDays,
+  streakPrevDays,
 }: MovementCardProps) {
   const percentage = targetReps > 0 ? Math.min((currentReps / targetReps) * 100, 100) : 0;
   const isComplete = currentReps >= targetReps;
@@ -320,13 +334,43 @@ function MovementCard({
         <CardTitle className="flex items-center justify-between">
           <span>{categoryName}</span>
           <div className="flex items-center gap-2">
-            {typeof streakDays === "number" && streakDays > 0 && (
-              <span className="text-xs text-muted-foreground">Streak {streakDays}</span>
-            )}
+            {(() => {
+              const hasAnySetToday = currentReps > 0;
+              const showArrow = typeof streakPrevDays === "number" && !hasAnySetToday && streakPrevDays > 0;
+              const realized = typeof streakDays === "number" ? streakDays : 0;
+              const potential = typeof streakPrevDays === "number" ? streakPrevDays + 1 : 0;
+              const shouldShowChip = showArrow || realized > 0;
+              if (!shouldShowChip) return null;
+
+              const base = "text-xs rounded border px-1.5 py-0.5 flex items-center gap-1";
+              const done = "text-green-600 dark:text-green-400 border-green-300/50 dark:border-green-700/50";
+              const prog = "text-amber-600 dark:text-amber-400 border-amber-300/50 dark:border-amber-700/50";
+
+              if (isComplete && realized > 0) {
+                return (
+                  <span className={`${base} ${done}`}>
+                    <CheckCircle className="h-4 w-4" />
+                    {realized} Day Streak
+                  </span>
+                );
+              }
+
+              return (
+                <span className={`${base} ${prog}`}>
+                  <Flame className="h-4 w-4" />
+                  {showArrow ? (
+                    <>
+                      {streakPrevDays} → {potential} Day Streak
+                    </>
+                  ) : (
+                    <>
+                      {realized} Day Streak
+                    </>
+                  )}
+                </span>
+              );
+            })()}
             {hasMaxEffortToday && <Trophy className="h-5 w-5 text-purple-500" />}
-            {!hasMaxEffortToday && isComplete && (
-              <span className="text-sm font-normal text-green-500">✓ Complete</span>
-            )}
           </div>
         </CardTitle>
         <CardDescription className="truncate">{exerciseName}</CardDescription>
