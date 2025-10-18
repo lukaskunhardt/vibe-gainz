@@ -334,6 +334,23 @@ This is supposed to be a nextjs based app for high volume calisthenics based on 
 ---
 
 ## 7. Dashboard - Active State (Daily Usage)
+## 8. Friends Timeline (Social)
+
+- Add friends by email, accept requests, and see friends’ recent activity.
+- Timeline shows friends’ logged sets and highlights Max Effort tests.
+
+Routes
+- `/friends` — Manage friends and view the timeline.
+
+Database
+- `friendships` — stores friend relationships with statuses: `pending`, `accepted`.
+- Adjusted RLS to allow: select profiles for lookup, and read friends’ sets in feed.
+
+Migrations
+- Apply new SQL in `supabase/migrations/004_friends_and_feed.sql` to create tables, policies, and helper function `accept_friendship`.
+
+Notes
+- Profiles visibility is opened for simple email lookup. If you prefer stricter privacy, replace with a limited view.
 
 **Purpose:** Main screen for logging daily workouts
 

@@ -60,6 +60,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 Dashboard
               </Button>
             </Link>
+            <Link href="/friends">
+              <Button variant="ghost" size="sm">
+                Friends
+              </Button>
+            </Link>
             <Link href="/stats">
               <Button variant="ghost" size="sm">
                 Stats
@@ -101,6 +106,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
                   </Link>
                 </SheetClose>
                 <SheetClose asChild>
+                  <Link href="/friends">
+                    <Button variant="ghost" className="w-full justify-start">
+                      Friends
+                    </Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
                   <Link href="/settings">
                     <Button variant="ghost" className="w-full justify-start">
                       Settings
@@ -123,4 +135,3 @@ export default async function DashboardLayout({ children }: { children: React.Re
     </div>
   );
 }
-
