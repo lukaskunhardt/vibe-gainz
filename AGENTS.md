@@ -47,7 +47,7 @@ Never amend commits unless you have explicit written approval in the task thread
 ## Commit & Pull Request Guidelines
 - Conventional Commits: `feat:`, `fix:`, `docs:`, etc. Example: `feat(friends): implement timeline feed`.
 - Link issues: `Closes #<id>` in commit/PR descriptions.
-- PRs include: summary, screenshots for UI, migration notes (if `supabase/migrations/` changed), and manual test steps.
+- run pnpm build before committing to fix any errors that might cause the code to fail to compile.
 
 ## Security & Configuration
 - Env: `.env.local` define `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (do not commit secrets). Do not change this file.

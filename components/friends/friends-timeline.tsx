@@ -32,8 +32,9 @@ export function FriendsTimeline({ userId }: { userId: string }) {
     try {
       await sendRequest(email);
       setEmail("");
-    } catch (e: any) {
-      alert(e?.message || "Failed to send request");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to send request";
+      alert(msg);
     } finally {
       setSending(false);
     }
@@ -44,8 +45,9 @@ export function FriendsTimeline({ userId }: { userId: string }) {
     try {
       await acceptRequest(fromId);
       refreshFeed();
-    } catch (e: any) {
-      alert(e?.message || "Failed to accept");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to accept";
+      alert(msg);
     } finally {
       setAccepting(null);
     }
@@ -180,4 +182,3 @@ export function FriendsTimeline({ userId }: { userId: string }) {
     </Tabs>
   );
 }
-
