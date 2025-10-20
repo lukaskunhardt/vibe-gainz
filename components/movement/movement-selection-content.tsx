@@ -80,7 +80,8 @@ export function MovementSelectionContent({ userId, category }: MovementSelection
 
         if (error) throw error;
 
-        const exerciseName = exercises.find((ex) => ex.id === selectedExercise)?.name || selectedExercise;
+        const exerciseName =
+          exercises.find((ex) => ex.id === selectedExercise)?.name || selectedExercise;
         toast.success(`Exercise changed to ${exerciseName}`);
         router.push("/dashboard");
       } catch (error) {
@@ -93,7 +94,7 @@ export function MovementSelectionContent({ userId, category }: MovementSelection
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl">
       <div className="mb-6">
         <Link href="/dashboard">
           <Button variant="ghost" size="sm">
@@ -109,16 +110,15 @@ export function MovementSelectionContent({ userId, category }: MovementSelection
             {isInitialSetup ? `${categoryName} Movement Setup` : `Change ${categoryName} Exercise`}
           </CardTitle>
           <CardDescription>
-            {isInitialSetup 
+            {isInitialSetup
               ? "Select an exercise you can perform at least 10 repetitions of with good form. You'll perform a max effort test next to establish your baseline."
-              : "Select a different exercise variation. You can switch between exercises without affecting your daily target."
-            }
+              : "Select a different exercise variation. You can switch between exercises without affecting your daily target."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {checkingMovement ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
             </div>
           ) : (
             <div className="space-y-6">
@@ -130,16 +130,18 @@ export function MovementSelectionContent({ userId, category }: MovementSelection
                       key={exercise.id}
                       type="button"
                       onClick={() => handleExerciseSelect(exercise.id)}
-                      className={`flex items-center justify-between p-4 rounded-lg border-2 transition-colors text-left ${
+                      className={`flex items-center justify-between rounded-lg border-2 p-4 text-left transition-colors ${
                         selectedExercise === exercise.id
                           ? "border-primary bg-primary/5"
                           : "border-border hover:border-primary/50"
                       }`}
                     >
                       <div>
-                        <span className="font-medium block">{exercise.name}</span>
+                        <span className="block font-medium">{exercise.name}</span>
                         {!exercise.isStandard && (
-                          <span className="text-xs text-muted-foreground">Progression exercise</span>
+                          <span className="text-xs text-muted-foreground">
+                            Progression exercise
+                          </span>
                         )}
                       </div>
                       <Link
@@ -155,21 +157,22 @@ export function MovementSelectionContent({ userId, category }: MovementSelection
               </div>
 
               {selectedExercise && isInitialSetup && (
-                <div className="rounded-lg bg-primary/10 border border-primary/20 p-4">
-                  <p className="text-sm font-medium mb-2">Next Step:</p>
+                <div className="rounded-lg border border-primary/20 bg-primary/10 p-4">
+                  <p className="mb-2 text-sm font-medium">Next Step:</p>
                   <p className="text-sm text-muted-foreground">
-                    You&apos;ll perform a max effort test for {exercises.find((ex) => ex.id === selectedExercise)?.name}. 
-                    Do as many quality reps as you can until complete failure. This establishes your baseline and 
-                    sets your daily target at 80% of your max effort.
+                    You&apos;ll perform a max effort test for{" "}
+                    {exercises.find((ex) => ex.id === selectedExercise)?.name}. Do as many quality
+                    reps as you can until complete failure. This establishes your baseline and sets
+                    your daily target at 80% of your max effort.
                   </p>
                 </div>
               )}
 
               {selectedExercise && !isInitialSetup && (
-                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-4">
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/20">
                   <p className="text-sm text-muted-foreground">
-                    Switching to {exercises.find((ex) => ex.id === selectedExercise)?.name}. 
-                    Your daily target and progress will remain unchanged.
+                    Switching to {exercises.find((ex) => ex.id === selectedExercise)?.name}. Your
+                    daily target and progress will remain unchanged.
                   </p>
                 </div>
               )}
@@ -180,12 +183,11 @@ export function MovementSelectionContent({ userId, category }: MovementSelection
                 size="lg"
                 disabled={!selectedExercise || loading}
               >
-                {loading 
-                  ? "Updating..." 
-                  : isInitialSetup 
-                  ? "Continue to Max Effort Test" 
-                  : "Change Exercise"
-                }
+                {loading
+                  ? "Updating..."
+                  : isInitialSetup
+                    ? "Continue to Max Effort Test"
+                    : "Change Exercise"}
               </Button>
             </div>
           )}
@@ -194,4 +196,3 @@ export function MovementSelectionContent({ userId, category }: MovementSelection
     </div>
   );
 }
-

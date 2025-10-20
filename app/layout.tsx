@@ -11,7 +11,8 @@ const defaultUrl = process.env.VERCEL_URL
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Vibe Gainz - High Volume Calisthenics Tracking",
-  description: "Track your calisthenics journey with intelligent volume progression and recovery monitoring",
+  description:
+    "Track your calisthenics journey with intelligent volume progression and recovery monitoring",
 };
 
 const geistSans = Geist({

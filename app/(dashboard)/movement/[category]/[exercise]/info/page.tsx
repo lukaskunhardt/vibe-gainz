@@ -24,10 +24,6 @@ export default async function ExerciseInfoPage({
   }
 
   return (
-    <ExerciseInfoContent
-      category={category as "push" | "pull" | "legs"}
-      exerciseId={exercise}
-    />
+    <ExerciseInfoContent category={category as "push" | "pull" | "legs"} exerciseId={exercise} />
   );
 }
-

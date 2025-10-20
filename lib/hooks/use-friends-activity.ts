@@ -60,10 +60,7 @@ export function useFriendsActivity(userId?: string) {
 
       // Attach emails
       const ids = Array.from(new Set(items.map((i) => i.user_id)));
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, email")
-        .in("id", ids);
+      const { data: profs } = await supabase.from("profiles").select("id, email").in("id", ids);
       const emailById = new Map((profs || []).map((p) => [p.id, p.email]));
       items.forEach((i) => (i.email = emailById.get(i.user_id) || "Unknown"));
 
@@ -79,4 +76,3 @@ export function useFriendsActivity(userId?: string) {
 
   return { items, loading, refresh: load };
 }
-

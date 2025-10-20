@@ -20,8 +20,8 @@ export function ExerciseInfoContent({ category, exerciseId }: ExerciseInfoConten
 
   if (!exercise) {
     return (
-      <div className="max-w-2xl mx-auto text-center py-12">
-        <p className="text-muted-foreground mb-4">Exercise not found</p>
+      <div className="mx-auto max-w-2xl py-12 text-center">
+        <p className="mb-4 text-muted-foreground">Exercise not found</p>
         <Link href="/dashboard">
           <Button>Back to Dashboard</Button>
         </Link>
@@ -30,7 +30,7 @@ export function ExerciseInfoContent({ category, exerciseId }: ExerciseInfoConten
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="mx-auto max-w-3xl">
       <div className="mb-6">
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -46,13 +46,11 @@ export function ExerciseInfoContent({ category, exerciseId }: ExerciseInfoConten
             <CardDescription className="flex items-center gap-4">
               <span className="capitalize">{category} Movement</span>
               {exercise.isStandard ? (
-                <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                <span className="rounded bg-primary/10 px-2 py-1 text-xs text-primary">
                   Standard Exercise
                 </span>
               ) : (
-                <span className="text-xs bg-muted px-2 py-1 rounded">
-                  Progression Exercise
-                </span>
+                <span className="rounded bg-muted px-2 py-1 text-xs">Progression Exercise</span>
               )}
             </CardDescription>
           </CardHeader>
@@ -65,10 +63,10 @@ export function ExerciseInfoContent({ category, exerciseId }: ExerciseInfoConten
               <CardTitle>Form Video</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="aspect-video rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+              <div className="flex aspect-video items-center justify-center overflow-hidden rounded-lg bg-muted">
                 <iframe
                   src={formCues.videoUrl}
-                  className="w-full h-full"
+                  className="h-full w-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                   title={`${exercise.name} form video`}
@@ -83,15 +81,13 @@ export function ExerciseInfoContent({ category, exerciseId }: ExerciseInfoConten
           <Card>
             <CardHeader>
               <CardTitle>Form Cues</CardTitle>
-              <CardDescription>
-                Focus on these key points for proper technique
-              </CardDescription>
+              <CardDescription>Focus on these key points for proper technique</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3">
                 {formCues.cues.map((cue, index) => (
                   <li key={index} className="flex items-start gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
                     <span className="text-sm">{cue}</span>
                   </li>
                 ))}
@@ -111,7 +107,7 @@ export function ExerciseInfoContent({ category, exerciseId }: ExerciseInfoConten
             </CardHeader>
             <CardContent>
               <div className="rounded-lg bg-background p-4">
-                <p className="text-sm text-muted-foreground mb-3">
+                <p className="mb-3 text-sm text-muted-foreground">
                   <strong>When you reach 20+ reps on your max effort test,</strong> you&apos;ll
                   automatically progress to the next difficulty level. Keep pushing!
                 </p>
@@ -119,9 +115,9 @@ export function ExerciseInfoContent({ category, exerciseId }: ExerciseInfoConten
                   {EXERCISE_VARIATIONS[category].map((ex) => (
                     <div
                       key={ex.id}
-                      className={`px-3 py-1.5 rounded text-xs ${
+                      className={`rounded px-3 py-1.5 text-xs ${
                         ex.id === exerciseId
-                          ? "bg-primary text-primary-foreground font-semibold"
+                          ? "bg-primary font-semibold text-primary-foreground"
                           : ex.difficulty < exercise.difficulty
                             ? "bg-green-500/10 text-green-700 dark:text-green-400"
                             : "bg-muted text-muted-foreground"
@@ -143,21 +139,21 @@ export function ExerciseInfoContent({ category, exerciseId }: ExerciseInfoConten
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h4 className="font-semibold mb-2">Focus on the Eccentric</h4>
+              <h4 className="mb-2 font-semibold">Focus on the Eccentric</h4>
               <p className="text-sm text-muted-foreground">
                 The lowering phase (eccentric) is crucial for building strength. Aim for a 3-second
                 controlled descent on every rep.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-2">Optimal RPE Range</h4>
+              <h4 className="mb-2 font-semibold">Optimal RPE Range</h4>
               <p className="text-sm text-muted-foreground">
                 For most sets, aim for RPE 6-8. This provides enough stimulus for growth while
                 minimizing fatigue, allowing you to accumulate more volume throughout the week.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-2">Avoid Training to Failure</h4>
+              <h4 className="mb-2 font-semibold">Avoid Training to Failure</h4>
               <p className="text-sm text-muted-foreground">
                 Reserve RPE 10 (failure) for max effort tests only. Regular training to failure
                 causes excessive fatigue and can limit your weekly volume, hindering long-term
@@ -182,4 +178,3 @@ export function ExerciseInfoContent({ category, exerciseId }: ExerciseInfoConten
     </div>
   );
 }
-

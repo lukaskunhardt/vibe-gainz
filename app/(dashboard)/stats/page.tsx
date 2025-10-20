@@ -15,4 +15,3 @@ export default async function StatsPage() {
 
   return <StatsContent userId={user.id} />;
 }
-

@@ -19,7 +19,12 @@ export const EXERCISE_VARIATIONS: Record<MovementCategory, ExerciseVariation[]> 
       isStandard: false,
     },
     { id: "jumping-pullups", name: "Jumping Pull-ups", difficulty: 3, isStandard: false },
-    { id: "band-assisted-pullups", name: "Band Assisted Pull-ups", difficulty: 4, isStandard: false },
+    {
+      id: "band-assisted-pullups",
+      name: "Band Assisted Pull-ups",
+      difficulty: 4,
+      isStandard: false,
+    },
     { id: "regular-pullups", name: "Regular Pull-ups", difficulty: 5, isStandard: true },
     { id: "weighted-pullups", name: "Weighted Pull-ups", difficulty: 6, isStandard: true },
     { id: "archer-pullups", name: "Archer Pull-ups", difficulty: 7, isStandard: true },
@@ -300,4 +305,3 @@ export function getPreviousDifficultyExercise(
   if (currentIndex <= 0) return null;
   return exercises[currentIndex - 1];
 }
-

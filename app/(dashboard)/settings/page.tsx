@@ -15,4 +15,3 @@ export default async function SettingsPage() {
 
   return <SettingsContent userId={user.id} userEmail={user.email || ""} />;
 }
-

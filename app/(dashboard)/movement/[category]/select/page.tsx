@@ -23,6 +23,7 @@ export default async function MovementSelectPage({
     redirect("/dashboard");
   }
 
-  return <MovementSelectionContent userId={user.id} category={category as "push" | "pull" | "legs"} />;
+  return (
+    <MovementSelectionContent userId={user.id} category={category as "push" | "pull" | "legs"} />
+  );
 }
-

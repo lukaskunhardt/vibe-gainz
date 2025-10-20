@@ -62,11 +62,7 @@ export function useTodaySets(userId?: string, category?: MovementCategory) {
   return useSets(userId, category, new Date());
 }
 
-export function useWeekSets(
-  userId?: string,
-  category?: MovementCategory,
-  weekStartDate?: Date
-) {
+export function useWeekSets(userId?: string, category?: MovementCategory, weekStartDate?: Date) {
   const [sets, setSets] = useState<Set[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -80,10 +76,10 @@ export function useWeekSets(
     const fetchSets = async () => {
       try {
         const supabase = createClient();
-        
+
         const weekStart = new Date(weekStartDate);
         weekStart.setHours(0, 0, 0, 0);
-        
+
         const weekEnd = new Date(weekStartDate);
         weekEnd.setDate(weekEnd.getDate() + 7);
         weekEnd.setHours(23, 59, 59, 999);
@@ -118,4 +114,3 @@ export function useWeekSets(
 
   return { sets, loading, error };
 }
-

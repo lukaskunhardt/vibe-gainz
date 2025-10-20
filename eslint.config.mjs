@@ -12,13 +12,7 @@ const compat = new FlatCompat({
 const eslintConfig = [
   // Ignore generated and vendor directories
   {
-    ignores: [
-      "**/.next/**",
-      "node_modules/**",
-      "**/dist/**",
-      "**/build/**",
-      "next-env.d.ts",
-    ],
+    ignores: ["**/.next/**", "node_modules/**", "**/dist/**", "**/build/**", "next-env.d.ts"],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   // Allow require() in Tailwind config

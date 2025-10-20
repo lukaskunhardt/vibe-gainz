@@ -23,7 +23,12 @@ interface RecordingContentProps {
   initialExercise?: string;
 }
 
-export function RecordingContent({ userId, category, isMaxEffort, initialExercise }: RecordingContentProps) {
+export function RecordingContent({
+  userId,
+  category,
+  isMaxEffort,
+  initialExercise,
+}: RecordingContentProps) {
   const router = useRouter();
   const [movement, setMovement] = useState<{
     id: string;
@@ -166,7 +171,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
 
   const handleDeleteSet = async () => {
     if (!selectedSetId) return;
-    
+
     if (!confirm("Are you sure you want to delete this set?")) {
       return;
     }
@@ -174,19 +179,16 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
     setSaving(true);
     try {
       const supabase = createClient();
-      const { error } = await supabase
-        .from("sets")
-        .delete()
-        .eq("id", selectedSetId);
+      const { error } = await supabase.from("sets").delete().eq("id", selectedSetId);
 
       if (error) throw error;
 
       toast.success("Set deleted");
-      
+
       // Reset selection state
       setSelectedSetId(null);
       setIsEditMode(false);
-      
+
       // Reload data
       await loadData();
     } catch (error) {
@@ -199,7 +201,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
 
   const saveSet = async (isMaxEffortSet: boolean) => {
     if (!movement) return;
-    
+
     setSaving(true);
     try {
       const supabase = createClient();
@@ -218,11 +220,11 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
         if (updateError) throw updateError;
 
         toast.success("Set updated!");
-        
+
         // Reset selection state
         setSelectedSetId(null);
         setIsEditMode(false);
-        
+
         // Reload data and return early
         await loadData();
         return;
@@ -234,7 +236,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
       // If max effort and movement doesn't exist yet (initial setup), create it first
       if ((isMaxEffortSet || isMaxEffort) && !movement.id) {
         const newDailyTarget = calculateInitialDailyTarget(reps);
-        
+
         const { data: newMovement, error: createError } = await supabase
           .from("movements")
           .insert({
@@ -275,7 +277,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
       if ((isMaxEffortSet || isMaxEffort) && movement.id) {
         const newDailyTarget = calculateInitialDailyTarget(reps);
         const exercise = getExerciseById(movement.exercise_variation);
-        
+
         // Check for auto-progression
         let nextExercise = null;
         if (exercise && !exercise.isStandard && reps > 20) {
@@ -316,15 +318,17 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
 
       // Reload data
       await loadData();
-      
+
       // Reset selection state
       setSelectedSetId(null);
       setIsEditMode(false);
 
       // Check if daily target is reached (use the latest movement data)
-      const currentMovement = movement.id ? movement : { ...movement, daily_target: calculateInitialDailyTarget(reps) };
+      const currentMovement = movement.id
+        ? movement
+        : { ...movement, daily_target: calculateInitialDailyTarget(reps) };
       const newTotal = todaySets.reduce((sum, s) => sum + s.reps, 0) + reps;
-      
+
       // For max effort sets, always redirect to dashboard
       if (isMaxEffortSet || isMaxEffort) {
         toast.success("🎉 Max effort recorded! Check the dashboard.");
@@ -343,9 +347,9 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -358,10 +362,12 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
 
   const currentTotal = todaySets.reduce((sum, set) => sum + set.reps, 0);
   const percentage = Math.min((currentTotal / movement.daily_target) * 100, 100);
-  const exerciseName = EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name || movement.exercise_variation;
+  const exerciseName =
+    EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name ||
+    movement.exercise_variation;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl">
       <div className="mb-6">
         <Link href="/dashboard">
           <Button variant="ghost" size="sm">
@@ -373,7 +379,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-2xl">
             {isMaxEffort && <Trophy className="h-6 w-6 text-yellow-500" />}
             {isMaxEffort ? "Max Effort Test" : "Log Set"} - {categoryName}
           </CardTitle>
@@ -381,8 +387,8 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
             <CardDescription>{exerciseName}</CardDescription>
             {!isMaxEffort && (
               <Link href={`/movement/${category}/select`}>
-                <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs">
-                  <Edit className="h-3 w-3 mr-1" />
+                <Button variant="ghost" size="sm" className="h-auto px-2 py-1 text-xs">
+                  <Edit className="mr-1 h-3 w-3" />
                   Change Exercise
                 </Button>
               </Link>
@@ -393,7 +399,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
           {/* Progress */}
           {!isMaxEffort && (
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-medium">Today&apos;s Progress</span>
                 <span className="text-sm text-muted-foreground">
                   {currentTotal} / {movement.daily_target} reps
@@ -406,64 +412,69 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
           {/* Recommended & Logged Sets */}
           {!isMaxEffort && (
             <div>
-              <h3 className="text-sm font-medium mb-2">Recommended Sets</h3>
+              <h3 className="mb-2 text-sm font-medium">Recommended Sets</h3>
               {(() => {
                 const { targetRepsPerSet } = calculateRecommendedSets(
                   movement.daily_target,
                   movement.max_effort_reps
                 );
                 return (
-                  <p className="text-xs text-muted-foreground mb-3">
+                  <p className="mb-3 text-xs text-muted-foreground">
                     Based on a max effort of {movement.max_effort_reps} reps, aim for about{" "}
                     {targetRepsPerSet} reps per set (RPE 7-8) to reach your daily target of{" "}
                     {movement.daily_target} reps.
                   </p>
                 );
               })()}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {(() => {
                   const { targetRepsPerSet, numberOfSets } = calculateRecommendedSets(
                     movement.daily_target,
                     movement.max_effort_reps
                   );
                   const totalCards = Math.max(numberOfSets, todaySets.length + 1);
-                  
+
                   return Array.from({ length: totalCards }).map((_, idx) => {
                     const loggedSet = todaySets[idx];
                     const isNextSet = idx === todaySets.length;
                     const isBonusSet = idx >= numberOfSets;
-                    const isSelected = loggedSet 
-                      ? selectedSetId === loggedSet.id 
+                    const isSelected = loggedSet
+                      ? selectedSetId === loggedSet.id
                       : selectedSetId === null && isEditMode === false && isNextSet;
-                    
+
                     if (loggedSet) {
                       // Logged set card - green border with checkmark
                       return (
                         <div
                           key={loggedSet.id}
                           onClick={() => handleSetSelection(loggedSet)}
-                          className={`rounded-lg relative group ${
+                          className={`group relative rounded-lg ${
                             isSelected ? "border-2 border-primary" : "border-2 border-green-500"
-                          } bg-green-50 dark:bg-green-950/20 p-3 text-center cursor-pointer hover:bg-green-100 dark:hover:bg-green-950/30 transition-all`}
+                          } cursor-pointer bg-green-50 p-3 text-center transition-all hover:bg-green-100 dark:bg-green-950/20 dark:hover:bg-green-950/30`}
                         >
                           {/* Checkmark - always in top-right */}
-                          <Check className="h-4 w-4 text-green-600 dark:text-green-400 absolute top-2 right-2" />
-                          
+                          <Check className="absolute right-2 top-2 h-4 w-4 text-green-600 dark:text-green-400" />
+
                           {/* Pencil - appears in top-left on hover */}
-                          <Pencil className="h-3.5 w-3.5 text-primary absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          
-                          <div className="text-xs text-muted-foreground mb-1 group-hover:hidden">
+                          <Pencil className="absolute left-2 top-2 h-3.5 w-3.5 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
+
+                          <div className="mb-1 text-xs text-muted-foreground group-hover:hidden">
                             {isBonusSet ? "Bonus Set" : `Set ${idx + 1}`}
                           </div>
-                          <div className="text-xs text-primary font-medium mb-1 hidden group-hover:block">Edit Set</div>
+                          <div className="mb-1 hidden text-xs font-medium text-primary group-hover:block">
+                            Edit Set
+                          </div>
                           <div className="text-lg font-bold">{loggedSet.reps} reps</div>
-                          <div className="text-xs mt-1">
+                          <div className="mt-1 text-xs">
                             {(() => {
                               const c = colorForRPE(loggedSet.rpe, loggedSet.is_max_effort);
-                              const textOnColor = loggedSet.rpe >= 9 || loggedSet.is_max_effort ? "#FFFFFF" : undefined;
+                              const textOnColor =
+                                loggedSet.rpe >= 9 || loggedSet.is_max_effort
+                                  ? "#FFFFFF"
+                                  : undefined;
                               return (
                                 <span
-                                  className="inline-block px-2 py-0.5 rounded text-xs"
+                                  className="inline-block rounded px-2 py-0.5 text-xs"
                                   style={{ backgroundColor: c, color: textOnColor }}
                                 >
                                   RPE {loggedSet.rpe}
@@ -481,16 +492,18 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
                           key={`next-set-${idx}`}
                           onClick={() => handleSetSelection(null, targetRepsPerSet)}
                           className={`rounded-lg border-2 ${
-                            isSelected ? "border-primary" : "border-dashed border-muted-foreground/40"
-                          } bg-background p-3 text-center cursor-pointer hover:bg-muted/30 transition-colors`}
+                            isSelected
+                              ? "border-primary"
+                              : "border-dashed border-muted-foreground/40"
+                          } cursor-pointer bg-background p-3 text-center transition-colors hover:bg-muted/30`}
                         >
-                          <div className="text-xs text-muted-foreground mb-1">
+                          <div className="mb-1 text-xs text-muted-foreground">
                             {isBonusSet ? "Bonus Set" : `Set ${idx + 1}`}
                           </div>
                           <div className="text-lg font-bold text-foreground">
                             {targetRepsPerSet} reps
                           </div>
-                          <div className="text-xs text-primary font-medium mt-1">Tap to log</div>
+                          <div className="mt-1 text-xs font-medium text-primary">Tap to log</div>
                         </div>
                       );
                     } else {
@@ -500,13 +513,13 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
                           key={`future-set-${idx}`}
                           className="rounded-lg border-2 border-dashed border-muted-foreground/20 bg-background p-3 text-center opacity-50"
                         >
-                          <div className="text-xs text-muted-foreground mb-1">
+                          <div className="mb-1 text-xs text-muted-foreground">
                             {isBonusSet ? "Bonus Set" : `Set ${idx + 1}`}
                           </div>
                           <div className="text-lg font-bold text-muted-foreground">
                             {targetRepsPerSet} reps
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1">&nbsp;</div>
+                          <div className="mt-1 text-xs text-muted-foreground">&nbsp;</div>
                         </div>
                       );
                     }
@@ -531,7 +544,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
               >
                 <Minus className="h-6 w-6" />
               </Button>
-              <div className="text-6xl font-bold w-32 text-center">{reps}</div>
+              <div className="w-32 text-center text-6xl font-bold">{reps}</div>
               <Button
                 variant="outline"
                 size="icon"
@@ -544,9 +557,7 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
           </div>
 
           {/* RPE Selector */}
-          {!isMaxEffort && (
-            <RPESelector value={rpe} onChange={setRPE} />
-          )}
+          {!isMaxEffort && <RPESelector value={rpe} onChange={setRPE} />}
 
           {/* Save Button */}
           <div className="space-y-2">
@@ -557,9 +568,15 @@ export function RecordingContent({ userId, category, isMaxEffort, initialExercis
               size="lg"
             >
               <Save className="mr-2 h-4 w-4" />
-              {saving ? "Saving..." : isMaxEffort ? "Record Max Effort" : isEditMode ? "Save Changes" : "Save Set"}
+              {saving
+                ? "Saving..."
+                : isMaxEffort
+                  ? "Record Max Effort"
+                  : isEditMode
+                    ? "Save Changes"
+                    : "Save Set"}
             </Button>
-            
+
             {/* Delete Button - only show when editing existing set */}
             {isEditMode && selectedSetId && (
               <Button

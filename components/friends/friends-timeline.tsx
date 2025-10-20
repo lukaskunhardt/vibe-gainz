@@ -16,12 +16,20 @@ function CategoryPill({ category }: { category: MovementCategory }) {
     pull: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
     legs: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
   }[category];
-  return <span className={`text-xs px-2 py-1 rounded ${color}`}>{category}</span>;
+  return <span className={`rounded px-2 py-1 text-xs ${color}`}>{category}</span>;
 }
 
 export function FriendsTimeline({ userId }: { userId: string }) {
   const { items, loading: feedLoading, refresh: refreshFeed } = useFriendsActivity(userId);
-  const { friends, incoming, outgoing, loading: friendsLoading, sendRequest, acceptRequest, removeFriend } = useFriends(userId);
+  const {
+    friends,
+    incoming,
+    outgoing,
+    loading: friendsLoading,
+    sendRequest,
+    acceptRequest,
+    removeFriend,
+  } = useFriends(userId);
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [accepting, setAccepting] = useState<string | null>(null);
@@ -87,7 +95,9 @@ export function FriendsTimeline({ userId }: { userId: string }) {
                   <div className="text-sm">
                     {i.is_max_effort ? (
                       <>
-                        <Badge variant="secondary" className="mr-2">Max Effort</Badge>
+                        <Badge variant="secondary" className="mr-2">
+                          Max Effort
+                        </Badge>
                         {i.exercise_variation}: {i.reps} reps
                       </>
                     ) : (
@@ -110,7 +120,11 @@ export function FriendsTimeline({ userId }: { userId: string }) {
             <CardDescription>Enter their account email</CardDescription>
           </CardHeader>
           <CardContent className="flex gap-2">
-            <Input placeholder="friend@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input
+              placeholder="friend@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
             <Button onClick={handleSend} disabled={sending || !email}>
               {sending ? "Sending…" : "Send"}
             </Button>
@@ -131,7 +145,11 @@ export function FriendsTimeline({ userId }: { userId: string }) {
               incoming.map((p) => (
                 <div key={p.id} className="flex items-center justify-between">
                   <span>{p.email}</span>
-                  <Button size="sm" onClick={() => handleAccept(p.id)} disabled={accepting === p.id}>
+                  <Button
+                    size="sm"
+                    onClick={() => handleAccept(p.id)}
+                    disabled={accepting === p.id}
+                  >
                     {accepting === p.id ? "Accepting…" : "Accept"}
                   </Button>
                 </div>
@@ -151,7 +169,9 @@ export function FriendsTimeline({ userId }: { userId: string }) {
               <div className="text-sm text-muted-foreground">No outgoing requests</div>
             ) : (
               outgoing.map((p) => (
-                <div key={p.id} className="text-sm">{p.email}</div>
+                <div key={p.id} className="text-sm">
+                  {p.email}
+                </div>
               ))
             )}
           </CardContent>

@@ -132,10 +132,9 @@ export function isInCurrentWeek(date: Date | string): boolean {
 export function formatWeekRange(weekStartDate: Date | string): string {
   const start = typeof weekStartDate === "string" ? parseISO(weekStartDate) : weekStartDate;
   const end = endOfWeek(start, { weekStartsOn: 1 });
-  
+
   const startMonth = format(start, "MMM d");
   const endFormatted = format(end, "MMM d, yyyy");
-  
+
   return `${startMonth} - ${endFormatted}`;
 }
-

@@ -57,15 +57,14 @@ function calculateFirstSetPerformanceScore(data: WeeklyData): number {
   });
 
   // Get first set of each day
-  const firstSets = Object.values(setsByDay).map((daySets) =>
-    daySets.sort((a, b) => a.set_number - b.set_number)[0]
+  const firstSets = Object.values(setsByDay).map(
+    (daySets) => daySets.sort((a, b) => a.set_number - b.set_number)[0]
   );
 
   if (firstSets.length === 0) return 0;
 
   // Calculate average first set reps
-  const avgFirstSetReps =
-    firstSets.reduce((sum, set) => sum + set.reps, 0) / firstSets.length;
+  const avgFirstSetReps = firstSets.reduce((sum, set) => sum + set.reps, 0) / firstSets.length;
 
   // Score based on percentage of max effort
   const percentage = avgFirstSetReps / maxEffortReps;
@@ -260,4 +259,3 @@ export function getRecoveryScoreRating(score: number): {
     description: "Prioritize recovery and reduce volume.",
   };
 }
-

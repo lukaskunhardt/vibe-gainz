@@ -41,7 +41,7 @@ export function useProfile(userId?: string) {
 
   const refetch = async () => {
     if (!userId) return;
-    
+
     setLoading(true);
     try {
       const supabase = createClient();
@@ -65,4 +65,3 @@ export function useProfile(userId?: string) {
 
   return { profile, loading, error, refetch };
 }
-

@@ -2,7 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { MaxEffortPrompt } from "@/types";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Trophy, X } from "lucide-react";
 
@@ -38,7 +44,7 @@ export function MaxEffortPromptModal({ prompt, onDismiss, onComplete }: MaxEffor
         <div className="space-y-4">
           <div className="rounded-lg bg-muted p-4 text-sm">
             <p className="mb-2">You&apos;re ready for a new max effort test because:</p>
-            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+            <ul className="list-inside list-disc space-y-1 text-muted-foreground">
               <li>It&apos;s been 7+ days since your last test</li>
               <li>OR your recent performance suggests you&apos;ve gotten stronger</li>
             </ul>
@@ -59,4 +65,3 @@ export function MaxEffortPromptModal({ prompt, onDismiss, onComplete }: MaxEffor
     </Dialog>
   );
 }
-

@@ -17,11 +17,11 @@ export default async function Home() {
     redirect("/dashboard");
   }
   return (
-    <main className="min-h-screen flex flex-col">
+    <main className="flex min-h-screen flex-col">
       {/* Header */}
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl">
+        <div className="container mx-auto flex items-center justify-between px-4 py-4">
+          <Link href="/" className="flex items-center gap-2 text-xl font-bold">
             <Dumbbell className="h-6 w-6" />
             <span>Vibe Gainz</span>
           </Link>
@@ -33,21 +33,21 @@ export default async function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="flex-1 container mx-auto px-4 py-16 md:py-24">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
+      <section className="container mx-auto flex-1 px-4 py-16 md:py-24">
+        <div className="mx-auto max-w-4xl space-y-8 text-center">
           <div className="space-y-4">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+            <h1 className="text-4xl font-bold tracking-tight md:text-6xl">
               High-Volume Calisthenics
               <br />
               <span className="text-primary">Made Simple</span>
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="mx-auto max-w-2xl text-xl text-muted-foreground">
               Track your push, pull, and leg movements with intelligent volume progression and
               recovery monitoring. Build muscle with bodyweight training.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/auth/sign-up">
               <Button size="lg" className="w-full sm:w-auto">
                 Get Started Free
@@ -61,7 +61,7 @@ export default async function Home() {
           </div>
 
           {/* Features */}
-          <div className="grid md:grid-cols-3 gap-8 mt-16 text-left">
+          <div className="mt-16 grid gap-8 text-left md:grid-cols-3">
             <div className="space-y-3">
               <div className="flex items-center justify-center md:justify-start">
                 <div className="rounded-full bg-primary/10 p-3">

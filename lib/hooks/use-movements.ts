@@ -79,4 +79,3 @@ export function useMovement(userId?: string, category?: string) {
 
   return { movement, loading, error };
 }
-

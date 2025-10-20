@@ -35,10 +35,14 @@ export function useFriends(userId?: string) {
       if (error) throw error;
 
       const accepted = rows?.filter((r: FriendRow) => r.status === "accepted") || [];
-      const incomingReq = rows?.filter((r: FriendRow) => r.status === "pending" && r.friend_id === userId) || [];
-      const outgoingReq = rows?.filter((r: FriendRow) => r.status === "pending" && r.user_id === userId) || [];
+      const incomingReq =
+        rows?.filter((r: FriendRow) => r.status === "pending" && r.friend_id === userId) || [];
+      const outgoingReq =
+        rows?.filter((r: FriendRow) => r.status === "pending" && r.user_id === userId) || [];
 
-      const friendIds = accepted.map((r: FriendRow) => (r.user_id === userId ? r.friend_id : r.user_id));
+      const friendIds = accepted.map((r: FriendRow) =>
+        r.user_id === userId ? r.friend_id : r.user_id
+      );
       const incomingUserIds = incomingReq.map((r: FriendRow) => r.user_id);
       const outgoingFriendIds = outgoingReq.map((r: FriendRow) => r.friend_id);
 
@@ -53,7 +57,8 @@ export function useFriends(userId?: string) {
         profiles = profs || [];
       }
 
-      const findProfile = (id: string) => profiles.find((p) => p.id === id) || { id, email: "Unknown" };
+      const findProfile = (id: string) =>
+        profiles.find((p) => p.id === id) || { id, email: "Unknown" };
 
       setFriends(friendIds.map(findProfile));
       setIncoming(incomingUserIds.map(findProfile));
@@ -67,45 +72,66 @@ export function useFriends(userId?: string) {
     refresh();
   }, [refresh]);
 
-  const sendRequest = useCallback(async (targetEmail: string) => {
-    const { data: target, error: terr } = await supabase
-      .from("profiles")
-      .select("id, email")
-      .eq("email", targetEmail)
-      .single();
-    if (terr) throw terr;
-    if (!userId) throw new Error("No user id");
-    if (!target) throw new Error("User not found");
-    if (target.id === userId) throw new Error("You cannot add yourself");
-    const { error } = await supabase.from("friendships").insert({ user_id: userId, friend_id: target.id, status: "pending" });
-    if (error) throw error;
-    await refresh();
-  }, [supabase, userId, refresh]);
+  const sendRequest = useCallback(
+    async (targetEmail: string) => {
+      const { data: target, error: terr } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .eq("email", targetEmail)
+        .single();
+      if (terr) throw terr;
+      if (!userId) throw new Error("No user id");
+      if (!target) throw new Error("User not found");
+      if (target.id === userId) throw new Error("You cannot add yourself");
+      const { error } = await supabase
+        .from("friendships")
+        .insert({ user_id: userId, friend_id: target.id, status: "pending" });
+      if (error) throw error;
+      await refresh();
+    },
+    [supabase, userId, refresh]
+  );
 
-  const acceptRequest = useCallback(async (fromUserId: string) => {
-    if (!userId) throw new Error("No user id");
-    const { data: row, error: rerr } = await supabase
-      .from("friendships")
-      .select("id")
-      .eq("user_id", fromUserId)
-      .eq("friend_id", userId)
-      .single();
-    if (rerr) throw rerr;
-    const { error } = await supabase.rpc("accept_friendship", { p_friendship_id: row.id });
-    if (error) throw error;
-    await refresh();
-  }, [supabase, userId, refresh]);
+  const acceptRequest = useCallback(
+    async (fromUserId: string) => {
+      if (!userId) throw new Error("No user id");
+      const { data: row, error: rerr } = await supabase
+        .from("friendships")
+        .select("id")
+        .eq("user_id", fromUserId)
+        .eq("friend_id", userId)
+        .single();
+      if (rerr) throw rerr;
+      const { error } = await supabase.rpc("accept_friendship", { p_friendship_id: row.id });
+      if (error) throw error;
+      await refresh();
+    },
+    [supabase, userId, refresh]
+  );
 
-  const removeFriend = useCallback(async (otherUserId: string) => {
-    if (!userId) throw new Error("No user id");
-    const { error } = await supabase
-      .from("friendships")
-      .delete()
-      .or(`and(user_id.eq.${userId},friend_id.eq.${otherUserId}),and(user_id.eq.${otherUserId},friend_id.eq.${userId})`);
-    if (error) throw error;
-    await refresh();
-  }, [supabase, userId, refresh]);
+  const removeFriend = useCallback(
+    async (otherUserId: string) => {
+      if (!userId) throw new Error("No user id");
+      const { error } = await supabase
+        .from("friendships")
+        .delete()
+        .or(
+          `and(user_id.eq.${userId},friend_id.eq.${otherUserId}),and(user_id.eq.${otherUserId},friend_id.eq.${userId})`
+        );
+      if (error) throw error;
+      await refresh();
+    },
+    [supabase, userId, refresh]
+  );
 
-  return { friends, incoming, outgoing, loading, refresh, sendRequest, acceptRequest, removeFriend };
+  return {
+    friends,
+    incoming,
+    outgoing,
+    loading,
+    refresh,
+    sendRequest,
+    acceptRequest,
+    removeFriend,
+  };
 }
-

@@ -31,29 +31,31 @@ export function RPESelector({ value, onChange }: RPESelectorProps) {
           const isSelected = value === rpeValue;
           const color = colorForRPE(rpeValue);
           const textOnColor = rpeValue >= 9 ? "text-white" : "text-foreground";
-          
+
           return (
             <button
               key={rpeValue}
               type="button"
               onClick={() => onChange(rpeValue)}
-              className={`p-3 rounded-lg border-2 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              className={`rounded-lg border-2 p-3 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2`}
               style={{
                 borderColor: color,
                 backgroundColor: isSelected ? color : undefined,
               }}
             >
-              <div className={`text-2xl font-bold ${isSelected ? textOnColor : ""}`}>{rpeValue}</div>
+              <div className={`text-2xl font-bold ${isSelected ? textOnColor : ""}`}>
+                {rpeValue}
+              </div>
             </button>
           );
         })}
       </div>
-      <p className="text-sm text-muted-foreground text-center min-h-[2.5rem]">
+      <p className="min-h-[2.5rem] text-center text-sm text-muted-foreground">
         {RPE_DESCRIPTIONS[value]}
       </p>
       <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-        <strong>Tip:</strong> For optimal gains with minimal fatigue, aim for RPE 6-8. 
-        Training to failure (RPE 10) should be reserved for max effort tests.
+        <strong>Tip:</strong> For optimal gains with minimal fatigue, aim for RPE 6-8. Training to
+        failure (RPE 10) should be reserved for max effort tests.
       </div>
     </div>
   );

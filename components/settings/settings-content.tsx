@@ -36,7 +36,7 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
       router.push("/auth/login");
     } catch (err) {
       console.error("Error signing out:", err);
-      toast.error("Failed to sign out. Please try again.")
+      toast.error("Failed to sign out. Please try again.");
     } finally {
       setSigningOut(false);
     }
@@ -65,9 +65,9 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Settings</h1>
+        <h1 className="mb-2 text-3xl font-bold">Settings</h1>
         <p className="text-muted-foreground">Manage your account and preferences</p>
       </div>
 
@@ -86,7 +86,7 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">User ID</label>
-            <p className="text-sm font-mono text-muted-foreground">{userId}</p>
+            <p className="font-mono text-sm text-muted-foreground">{userId}</p>
           </div>
         </CardContent>
       </Card>
@@ -98,9 +98,7 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
             <BookOpen className="h-5 w-5" />
             Training Guide
           </CardTitle>
-          <CardDescription>
-            Review the principles and methodology behind Vibe Gainz
-          </CardDescription>
+          <CardDescription>Review the principles and methodology behind Vibe Gainz</CardDescription>
         </CardHeader>
         <CardContent>
           <Link href="/onboarding">
@@ -125,9 +123,9 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
             Vibe Gainz is a high-volume calisthenics tracker designed to help you maximize muscle
             growth through intelligent volume progression and recovery monitoring.
           </p>
-          <div className="rounded-lg bg-muted p-4 text-sm space-y-2">
+          <div className="space-y-2 rounded-lg bg-muted p-4 text-sm">
             <h4 className="font-semibold">Key Features:</h4>
-            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+            <ul className="list-inside list-disc space-y-1 text-muted-foreground">
               <li>Automated daily target calculation (80% of max effort)</li>
               <li>Weekly recovery score assessment</li>
               <li>Smart volume adjustments based on performance</li>
@@ -163,21 +161,21 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div>
-            <h4 className="font-semibold mb-1">Volume Progression</h4>
+            <h4 className="mb-1 font-semibold">Volume Progression</h4>
             <p className="text-muted-foreground">
               Start at 80% of your max effort and gradually increase volume based on weekly recovery
               scores. This allows for sustainable long-term progress without excessive fatigue.
             </p>
           </div>
           <div>
-            <h4 className="font-semibold mb-1">RPE Management</h4>
+            <h4 className="mb-1 font-semibold">RPE Management</h4>
             <p className="text-muted-foreground">
               Train most sets at RPE 6-8 to maximize stimulus while minimizing fatigue. Reserve RPE
               10 (failure) for max effort tests only.
             </p>
           </div>
           <div>
-            <h4 className="font-semibold mb-1">Recovery Monitoring</h4>
+            <h4 className="mb-1 font-semibold">Recovery Monitoring</h4>
             <p className="text-muted-foreground">
               Weekly assessments track first set performance, RPE efficiency, target achievement,
               and consistency to determine optimal volume adjustments.
@@ -213,12 +211,16 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
           <DialogHeader>
             <DialogTitle>Reset All Data?</DialogTitle>
             <DialogDescription>
-              This will permanently delete all your movements, sets, and weekly reviews. You&apos;ll be
-              redirected to the dashboard to start fresh. This action cannot be undone.
+              This will permanently delete all your movements, sets, and weekly reviews. You&apos;ll
+              be redirected to the dashboard to start fresh. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowResetDialog(false)} disabled={resetting}>
+            <Button
+              variant="outline"
+              onClick={() => setShowResetDialog(false)}
+              disabled={resetting}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleResetData} disabled={resetting}>

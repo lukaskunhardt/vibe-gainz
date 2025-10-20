@@ -14,7 +14,7 @@ This is supposed to be a nextjs based app for high volume calisthenics based on 
 
 - App name at top: Vibe Gainz
 - Email input field
-- Magic link button: "Send Login Link" 
+- Magic link button: "Send Login Link"
 - Small text: "We'll email you a link to sign in"
 
 **Flow:**
@@ -56,7 +56,7 @@ This is supposed to be a nextjs based app for high volume calisthenics based on 
 
 - Three rows, each taking ~30% vertical space:
   - **PUSH** row with locked icon 🔒
-  - **PULL** row with locked icon 🔒  
+  - **PULL** row with locked icon 🔒
   - **LEGS** row with locked icon 🔒
 - Each row shows: "Record max effort to unlock"
 - Tap any row to start that movement's onboarding
@@ -87,29 +87,29 @@ This is supposed to be a nextjs based app for high volume calisthenics based on 
 
 **PUSH variations:**
 
-  - Wall push-ups ❓
-  - Incline push-ups (hands elevated on stairs or box) ❓
-  - Knee push-ups ❓
-  - Regular push-ups ❓
-  - Weighted push-ups ❓
+- Wall push-ups ❓
+- Incline push-ups (hands elevated on stairs or box) ❓
+- Knee push-ups ❓
+- Regular push-ups ❓
+- Weighted push-ups ❓
 
 **PULL variations:**
 
-  - Incline Rows ❓
-  - Australian pull-ups (horizontal rows) ❓
-  - Jumping pull-ups ❓
-  - Regular pull-ups ❓
-  - Weighted pull-ups ❓
+- Incline Rows ❓
+- Australian pull-ups (horizontal rows) ❓
+- Jumping pull-ups ❓
+- Regular pull-ups ❓
+- Weighted pull-ups ❓
 
 **LEGS variations:**
 
-  - Chair squat ❓
-  - Assisted squats (holding support) ❓
-  - Bodyweight squats ❓
-  - Lunge ❓
-  - Jump squats ❓
-  - Pistol squats (progression) ❓
-  - Weighted squats ❓
+- Chair squat ❓
+- Assisted squats (holding support) ❓
+- Bodyweight squats ❓
+- Lunge ❓
+- Jump squats ❓
+- Pistol squats (progression) ❓
+- Weighted squats ❓
 
 - Each option as a selectable card/row
 - Each exercise has a question mark icon (❓) on the right side
@@ -139,27 +139,27 @@ This is supposed to be a nextjs based app for high volume calisthenics based on 
 
 **Push-ups example:**
 
-  - "Elbows close to body (not flared)"
-  - "Control the descent (3 second eccentric)"
-  - "Full lockout at top"
-  - "Chest touches ground or fist"
-  - "Maintain plank position (no sagging hips)"
+- "Elbows close to body (not flared)"
+- "Control the descent (3 second eccentric)"
+- "Full lockout at top"
+- "Chest touches ground or fist"
+- "Maintain plank position (no sagging hips)"
 
 **Pull-ups example:**
 
-  - "Dead hang start (full elbow extension)"
-  - "Pull until chin clears bar"
-  - "Control the descent (no dropping)"
-  - "Engage lats, not just arms"
-  - "No kipping or swinging"
+- "Dead hang start (full elbow extension)"
+- "Pull until chin clears bar"
+- "Control the descent (no dropping)"
+- "Engage lats, not just arms"
+- "No kipping or swinging"
 
 **Squats example:**
 
-  - "Feet shoulder-width apart"
-  - "Knees track over toes (don't cave inward)"
-  - "Descend until thighs parallel or below"
-  - "Keep chest up, core braced"
-  - "Drive through heels to stand"
+- "Feet shoulder-width apart"
+- "Knees track over toes (don't cave inward)"
+- "Descend until thighs parallel or below"
+- "Keep chest up, core braced"
+- "Drive through heels to stand"
 
 - **Embedded YouTube video** (placeholder URL for now, you'll fill in later)
   - Video player embedded in screen
@@ -214,7 +214,6 @@ This is supposed to be a nextjs based app for high volume calisthenics based on 
 1. User performs max effort set, enters reps
 2. Taps "Log Max Effort"
 3. System calculates daily volume target:
-
    - **First max effort (week 1):** 80% of max effort (Minimum Effective Dose approach)
    - Example: 50 max effort → 40 reps/day target
    - **Subsequent max efforts:** Updates max effort value, daily target adjusted by Weekly Review
@@ -334,22 +333,27 @@ This is supposed to be a nextjs based app for high volume calisthenics based on 
 ---
 
 ## 7. Dashboard - Active State (Daily Usage)
+
 ## 8. Friends Timeline (Social)
 
 - Add friends by email, accept requests, and see friends’ recent activity.
 - Timeline shows friends’ logged sets and highlights Max Effort tests.
 
 Routes
+
 - `/friends` — Manage friends and view the timeline.
 
 Database
+
 - `friendships` — stores friend relationships with statuses: `pending`, `accepted`.
 - Adjusted RLS to allow: select profiles for lookup, and read friends’ sets in feed.
 
 Migrations
+
 - Apply new SQL in `supabase/migrations/004_friends_and_feed.sql` to create tables, policies, and helper function `accept_friendship`.
 
 Notes
+
 - Profiles visibility is opened for simple email lookup. If you prefer stricter privacy, replace with a limited view.
 
 **Purpose:** Main screen for logging daily workouts
@@ -436,23 +440,23 @@ Notes
 
 **1. First Set Performance (40 points)**
 
-  - "This week avg: 28 reps | Last week: 25 reps (+12%)"
-  - Score: 38/40 ✓
+- "This week avg: 28 reps | Last week: 25 reps (+12%)"
+- Score: 38/40 ✓
 
 **2. RPE Efficiency (30 points)**
 
-  - "Reps per RPE point: 3.2 | Last week: 2.8 (+14%)"
-  - Score: 28/30 ✓
+- "Reps per RPE point: 3.2 | Last week: 2.8 (+14%)"
+- Score: 28/30 ✓
 
 **3. Target Achievement (20 points)**
 
-  - "Days hitting target: 7/7 days"
-  - Score: 20/20 ✓
+- "Days hitting target: 7/7 days"
+- Score: 20/20 ✓
 
 **4. Consistency (10 points)**
 
-  - "Days logged: 7/7"
-  - Score: 10/10 ✓
+- "Days logged: 7/7"
+- Score: 10/10 ✓
 
 **Volume Suggestion Section:**
 
@@ -533,8 +537,6 @@ Notes
 - Y-axis: Total reps
 - Max effort sets highlighted in red
 - Different colors for different exercises within category
-
-
 
 **Navigation:**
 
@@ -811,40 +813,40 @@ CREATE POLICY "Users can update own prompts" ON max_effort_prompts FOR UPDATE US
 ```typescript
 export const EXERCISE_VARIATIONS = {
   push: [
-    { id: 'wall-pushups', name: 'Wall Push-ups', difficulty: 1, isStandard: false },
-    { id: 'incline-pushups', name: 'Incline Push-ups', difficulty: 2, isStandard: false },
-    { id: 'knee-pushups', name: 'Knee Push-ups', difficulty: 3, isStandard: false },
-    { id: 'regular-pushups', name: 'Regular Push-ups', difficulty: 4, isStandard: true },
-    { id: 'weighted-pushups', name: 'Weighted Push-ups', difficulty: 5, isStandard: true },
+    { id: "wall-pushups", name: "Wall Push-ups", difficulty: 1, isStandard: false },
+    { id: "incline-pushups", name: "Incline Push-ups", difficulty: 2, isStandard: false },
+    { id: "knee-pushups", name: "Knee Push-ups", difficulty: 3, isStandard: false },
+    { id: "regular-pushups", name: "Regular Push-ups", difficulty: 4, isStandard: true },
+    { id: "weighted-pushups", name: "Weighted Push-ups", difficulty: 5, isStandard: true },
   ],
   pull: [
-    { id: 'incline-rows', name: 'Incline Rows', difficulty: 1, isStandard: false },
-    { id: 'australian-pullups', name: 'Australian Pull-ups', difficulty: 2, isStandard: false },
-    { id: 'jumping-pullups', name: 'Jumping Pull-ups', difficulty: 3, isStandard: false },
-    { id: 'regular-pullups', name: 'Regular Pull-ups', difficulty: 4, isStandard: true },
-    { id: 'weighted-pullups', name: 'Weighted Pull-ups', difficulty: 5, isStandard: true },
+    { id: "incline-rows", name: "Incline Rows", difficulty: 1, isStandard: false },
+    { id: "australian-pullups", name: "Australian Pull-ups", difficulty: 2, isStandard: false },
+    { id: "jumping-pullups", name: "Jumping Pull-ups", difficulty: 3, isStandard: false },
+    { id: "regular-pullups", name: "Regular Pull-ups", difficulty: 4, isStandard: true },
+    { id: "weighted-pullups", name: "Weighted Pull-ups", difficulty: 5, isStandard: true },
   ],
   legs: [
-    { id: 'chair-squat', name: 'Chair Squat', difficulty: 1, isStandard: false },
-    { id: 'assisted-squats', name: 'Assisted Squats', difficulty: 2, isStandard: false },
-    { id: 'bodyweight-squats', name: 'Bodyweight Squats', difficulty: 3, isStandard: true },
-    { id: 'lunge', name: 'Lunge', difficulty: 4, isStandard: true },
-    { id: 'jump-squats', name: 'Jump Squats', difficulty: 5, isStandard: true },
-    { id: 'pistol-squats', name: 'Pistol Squats', difficulty: 6, isStandard: true },
-    { id: 'weighted-squats', name: 'Weighted Squats', difficulty: 7, isStandard: true },
+    { id: "chair-squat", name: "Chair Squat", difficulty: 1, isStandard: false },
+    { id: "assisted-squats", name: "Assisted Squats", difficulty: 2, isStandard: false },
+    { id: "bodyweight-squats", name: "Bodyweight Squats", difficulty: 3, isStandard: true },
+    { id: "lunge", name: "Lunge", difficulty: 4, isStandard: true },
+    { id: "jump-squats", name: "Jump Squats", difficulty: 5, isStandard: true },
+    { id: "pistol-squats", name: "Pistol Squats", difficulty: 6, isStandard: true },
+    { id: "weighted-squats", name: "Weighted Squats", difficulty: 7, isStandard: true },
   ],
 };
 
 export const FORM_CUES = {
-  'regular-pushups': {
+  "regular-pushups": {
     cues: [
-      'Elbows close to body (not flared)',
-      'Control the descent (3 second eccentric)',
-      'Full lockout at top',
-      'Chest touches ground or fist',
-      'Maintain plank position (no sagging hips)',
+      "Elbows close to body (not flared)",
+      "Control the descent (3 second eccentric)",
+      "Full lockout at top",
+      "Chest touches ground or fist",
+      "Maintain plank position (no sagging hips)",
     ],
-    videoUrl: 'https://www.youtube.com/embed/PLACEHOLDER_PUSHUP',
+    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_PUSHUP",
   },
   // ... more exercises
 };
@@ -871,7 +873,7 @@ export function calculateRecoveryScore(data: WeeklyData): RecoveryScore {
 export function suggestVolumeAdjustment(recoveryScore: number, currentTarget: number) {
   if (recoveryScore >= 85) return { percentage: 0.25, newTarget: Math.floor(currentTarget * 1.25) };
   if (recoveryScore >= 70) return { percentage: 0.15, newTarget: Math.floor(currentTarget * 1.15) };
-  if (recoveryScore >= 55) return { percentage: 0.10, newTarget: Math.floor(currentTarget * 1.10) };
+  if (recoveryScore >= 55) return { percentage: 0.1, newTarget: Math.floor(currentTarget * 1.1) };
   if (recoveryScore >= 40) return { percentage: 0.05, newTarget: Math.floor(currentTarget * 1.05) };
   if (recoveryScore >= 20) return { percentage: 0, newTarget: currentTarget };
   return { percentage: -0.125, newTarget: Math.floor(currentTarget * 0.875) };
@@ -976,7 +978,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ## Implementation Order
 
 1. **Bootstrap with Supabase starter**: Run `pnpm create next-app --example with-supabase`
-
    - This provides Next.js 15 + App Router, TypeScript, and Supabase client pre-configured
    - Authentication middleware and basic auth flow already set up
 

@@ -45,4 +45,3 @@ export interface WeeklyData {
   dailyTarget: number;
   maxEffortReps: number;
 }
-
