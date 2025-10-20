@@ -68,6 +68,7 @@ export function StatsContent({ userId }: StatsContentProps) {
   const [viewMode, setViewMode] = useState<"stacked" | "biggest">("stacked");
   const [showReadiness, setShowReadiness] = useState(true);
   const [showTarget, setShowTarget] = useState(true);
+  const [showTrend, setShowTrend] = useState(true);
   const [selectedExercises, setSelectedExercises] = useState<string[]>(() =>
     EXERCISE_VARIATIONS["push"].map((ex) => ex.id)
   );
@@ -289,6 +290,7 @@ export function StatsContent({ userId }: StatsContentProps) {
     maxRpe?: number;
     maxIsMax?: boolean;
     setCount?: number;
+    trend?: number;
   } & Record<string, number | boolean | string | undefined>;
 
   const chartData: ChartRow[] = useMemo(() => {
@@ -338,6 +340,34 @@ export function StatsContent({ userId }: StatsContentProps) {
     });
   }, [categoryStats, selectionSet, readinessByDate, movement?.daily_target, targetHistory]);
 
+  const chartDataWithTrend: ChartRow[] = useMemo(() => {
+    if (chartData.length === 0) return [];
+
+    const sourceKey = viewMode === "stacked" ? "total" : "maxReps";
+    const values = chartData.map((row) => {
+      const val = row[sourceKey];
+      return typeof val === "number" && !Number.isNaN(val) ? val : 0;
+    });
+
+    const windowSize = 7;
+    const moving: number[] = [];
+    let rollingSum = 0;
+
+    for (let i = 0; i < values.length; i++) {
+      rollingSum += values[i];
+      if (i >= windowSize) {
+        rollingSum -= values[i - windowSize];
+      }
+      const divisor = Math.min(i + 1, windowSize);
+      moving.push(divisor > 0 ? Number((rollingSum / divisor).toFixed(2)) : 0);
+    }
+
+    return chartData.map((row, idx) => ({
+      ...row,
+      trend: moving[idx],
+    }));
+  }, [chartData, viewMode]);
+
   const maxSetsForChart = useMemo(() => {
     if (viewMode !== "stacked") return 0;
     return chartData.reduce((mx, row) => {
@@ -363,7 +393,7 @@ export function StatsContent({ userId }: StatsContentProps) {
   }
 
   const hasReadinessLine =
-    showReadiness && chartData.some((row) => typeof row.readiness === "number");
+    showReadiness && chartDataWithTrend.some((row) => typeof row.readiness === "number");
   const showTargetLine = showTarget && movement && typeof movement.daily_target === "number";
 
   return (
@@ -455,6 +485,13 @@ export function StatsContent({ userId }: StatsContentProps) {
             />
             Target line
           </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={showTrend}
+              onCheckedChange={(checked) => setShowTrend(Boolean(checked))}
+            />
+            7-day trend
+          </label>
         </div>
       </div>
 
@@ -545,6 +582,11 @@ export function StatsContent({ userId }: StatsContentProps) {
                           Readiness: {data.readiness}
                         </div>
                       )}
+                      {showTrend && typeof data.trend === "number" && (
+                        <div className="text-xs text-muted-foreground">
+                          7-day trend: {data.trend.toFixed(1)} reps
+                        </div>
+                      )}
                       {showTargetLine && typeof data.target === "number" && (
                         <div className="text-xs text-muted-foreground">
                           Target: {data.target} reps
@@ -580,11 +622,17 @@ export function StatsContent({ userId }: StatsContentProps) {
                         <span className="text-muted-foreground">Target volume</span>
                       </div>
                     )}
+                    {showTrend && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-block h-0.5 w-4 rounded bg-sky-500 dark:bg-sky-400" />
+                        <span className="text-muted-foreground">7-day trend</span>
+                      </div>
+                    )}
                   </div>
                 );
 
                 return (
-                  <BarChart data={chartData} barCategoryGap={16} barGap={4}>
+                  <BarChart data={chartDataWithTrend} barCategoryGap={16} barGap={4}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
@@ -618,7 +666,7 @@ export function StatsContent({ userId }: StatsContentProps) {
                             stackId="sets"
                             radius={idx === maxSetsForChart - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
                           >
-                            {chartData.map((entry, index) => (
+                            {chartDataWithTrend.map((entry, index) => (
                               <Cell
                                 key={`${key}-${index}`}
                                 fill={colorForRPE(
@@ -634,7 +682,7 @@ export function StatsContent({ userId }: StatsContentProps) {
                       })
                     ) : (
                       <Bar yAxisId="left" dataKey="maxReps" radius={[4, 4, 0, 0]}>
-                        {chartData.map((entry, index) => (
+                        {chartDataWithTrend.map((entry, index) => (
                           <Cell
                             key={`max-${index}`}
                             fill={colorForRPE(entry.maxRpe ?? 0, entry.maxIsMax ?? false)}
@@ -666,6 +714,17 @@ export function StatsContent({ userId }: StatsContentProps) {
                         strokeWidth={1.5}
                         dot={false}
                         name="Target"
+                      />
+                    )}
+                    {showTrend && (
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="trend"
+                        stroke="#0ea5e9"
+                        strokeWidth={2}
+                        dot={false}
+                        name="7-day trend"
                       />
                     )}
                   </BarChart>
