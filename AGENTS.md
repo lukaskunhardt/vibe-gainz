@@ -15,27 +15,6 @@ Keep commits atomic: commit only the files you touched and list each path explic
 Quote any git paths containing brackets or parentheses (e.g., src/app/[candidate]/\*\*) when staging or committing so the shell does not treat them as globs or subshells.
 Never amend commits unless you have explicit written approval in the task thread.
 
-## Project Structure & Module Organization
-
-- App router: `app/` (e.g., `app/(dashboard)/dashboard/page.tsx`, `app/(dashboard)/friends/page.tsx`).
-- UI and features: `components/` (e.g., `components/friends/…`, `components/movement/…`).
-- Domain logic: `lib/`
-  - `lib/hooks/` (React hooks, e.g., `use-sets.ts`, `use-friends.ts`).
-  - `lib/constants/` (static data like `exercises.ts`).
-  - `lib/supabase/` (client/server helpers).
-  - `lib/utils/` (calculations, date helpers).
-- Types: `types/` (shared TS interfaces and enums).
-- Database: `supabase/migrations/` (SQL for schema + RLS).
-- Docs: `README.md` (flows and schema notes).
-
-## Build, Test, and Development Commands
-
-- `pnpm dev` — Run Next.js locally with Turbopack.
-- `pnpm build` — Production build.
-- `pnpm start` — Start the production server.
-- `pnpm lint` — ESLint on the project.
-- `pnpm format` — Prettier format.
-
 ## Coding Style & Naming Conventions
 
 - TypeScript + React (Next.js App Router).

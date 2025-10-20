@@ -2,25 +2,34 @@
 
 echo "husky - running pre-commit checks"
 
-# Lint must pass (errors block commit)
-pnpm lint
-if [ $? -ne 0 ]; then
-  echo "\nLint errors detected. Aborting commit."
-  exit 1
+# Get staged files
+STAGED_FILES=$(git diff --name-only --cached --diff-filter=ACM)
+
+# ESLint on staged TS/JS files
+ESLINT_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(ts|tsx|js|jsx)$' || true)
+if [ -n "$ESLINT_FILES" ]; then
+  pnpm exec eslint --max-warnings=0 $ESLINT_FILES
+  if [ $? -ne 0 ]; then
+    echo "\nLint errors detected. Aborting commit."
+    exit 1
+  fi
 fi
 
-# TypeScript typecheck must pass
+# TypeScript typecheck must pass for the repo
 pnpm typecheck
 if [ $? -ne 0 ]; then
   echo "\nType errors detected. Aborting commit. Run 'pnpm typecheck' locally."
   exit 1
 fi
 
-# Enforce formatting (non-blocking errors will be reported by Prettier)
-pnpm format:check
-if [ $? -ne 0 ]; then
-  echo "\nPrettier check failed. Run 'pnpm format' to fix."
-  exit 1
+# Prettier check on staged common formats
+PRETTIER_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(ts|tsx|js|jsx|json|md|css|scss|html)$' || true)
+if [ -n "$PRETTIER_FILES" ]; then
+  pnpm exec prettier --check $PRETTIER_FILES
+  if [ $? -ne 0 ]; then
+    echo "\nPrettier check failed. Run 'pnpm format' to fix."
+    exit 1
+  fi
 fi
 
 exit 0

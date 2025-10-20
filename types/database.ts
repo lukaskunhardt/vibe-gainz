@@ -63,3 +63,20 @@ export interface MaxEffortPrompt {
   created_at: string;
 }
 
+export interface Readiness {
+  id: string;
+  user_id: string;
+  date: string; // YYYY-MM-DD
+  score: number; // 1-5
+  created_at: string;
+}
+
+export interface MovementTargetHistory {
+  id: string;
+  user_id: string;
+  movement_id: string;
+  category: MovementCategory;
+  date: string; // YYYY-MM-DD
+  target: number;
+  created_at: string;
+}

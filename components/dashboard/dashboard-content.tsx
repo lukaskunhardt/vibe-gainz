@@ -3,18 +3,19 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Movement, MovementCategory, MaxEffortPrompt } from "@/types";
+import { Movement, MovementCategory, MaxEffortPrompt, Set as WorkoutSet } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Lock, Trophy, Plus, Info, CheckCircle, Flame } from "lucide-react";
-import { isTodayMonday, getPreviousWeekStart } from "@/lib/utils/date-helpers";
-import { format, startOfDay, endOfDay, parseISO, isSameDay, addDays } from "date-fns";
+import { format, startOfDay, endOfDay, parseISO, isSameDay, addDays, subDays } from "date-fns";
 import { useSearchParams } from "next/navigation";
 import { MaxEffortPromptModal } from "./max-effort-prompt-modal";
 import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
 import { StatsContent } from "@/components/stats/stats-content";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
+import { isCapRelaxed, suggestDailyTargetDelta } from "@/lib/utils/recovery-daily";
+import { toast } from "sonner";
 
 interface DashboardContentProps {
   userId: string;
@@ -39,7 +40,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
   const [progress, setProgress] = useState<CategoryProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [activePrompt, setActivePrompt] = useState<MaxEffortPrompt | null>(null);
-  const [needsWeeklyReview, setNeedsWeeklyReview] = useState<MovementCategory[]>([]);
+  // Weekly reviews removed
   const isDesktop = useIsDesktop();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get("date");
@@ -56,10 +57,111 @@ export function DashboardContent({ userId }: DashboardContentProps) {
       const supabase = createClient();
 
       // Fetch movements
-      const { data: movements } = await supabase
+      const { data: movementsData } = await supabase
         .from("movements")
         .select("*")
         .eq("user_id", userId);
+      let movementList = (movementsData ?? []) as Movement[];
+
+      // Auto-adjust daily targets once per day based on yesterday's performance
+      try {
+        const today = new Date();
+        const todayStart = startOfDay(today);
+        const yesterday = subDays(today, 1);
+        const yesterdayStart = startOfDay(yesterday);
+        const yesterdayEnd = endOfDay(yesterday);
+        const dayMinus2 = subDays(today, 2);
+        const dayMinus2Start = startOfDay(dayMinus2);
+
+        // Fetch last two days of sets for all categories (non-destructive read)
+        const { data: recentSets } = await supabase
+          .from("sets")
+          .select("*")
+          .eq("user_id", userId)
+          .gte("logged_at", dayMinus2Start.toISOString())
+          .lte("logged_at", yesterdayEnd.toISOString())
+          .order("logged_at", { ascending: true });
+        const recentWorkoutSets = (recentSets ?? []) as WorkoutSet[];
+
+        // Fetch today's readiness (gate increases)
+        const ytd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const { data: readiness } = await supabase
+          .from("readiness")
+          .select("score")
+          .eq("user_id", userId)
+          .eq("date", ytd)
+          .single();
+
+        const yKey = format(yesterdayStart, "yyyy-MM-dd");
+        const d2Key = format(dayMinus2Start, "yyyy-MM-dd");
+
+        // Helper: group sets by category and date (local day key)
+        const byCatDate = new Map<MovementCategory, Map<string, WorkoutSet[]>>();
+        recentWorkoutSets.forEach((s) => {
+          const d = new Date(s.logged_at);
+          d.setHours(0, 0, 0, 0);
+          const key = format(d, "yyyy-MM-dd");
+          const cat = s.category as MovementCategory;
+          if (!byCatDate.has(cat)) byCatDate.set(cat, new Map());
+          const inner = byCatDate.get(cat)!;
+          if (!inner.has(key)) inner.set(key, []);
+          inner.get(key)!.push(s);
+        });
+
+        let anyUpdated = false;
+        for (const m of movementList) {
+          // Only adjust once per calendar day
+          const updatedAt = m.updated_at ? new Date(m.updated_at) : undefined;
+          if (updatedAt && updatedAt >= todayStart) continue;
+
+          const cat = m.category;
+          const ySets = byCatDate.get(cat)?.get(yKey) ?? [];
+          const d2Sets = byCatDate.get(cat)?.get(d2Key);
+
+          const capOk = isCapRelaxed(ySets, d2Sets);
+          const readinessScore = readiness?.score ?? 3;
+          const suggestion = suggestDailyTargetDelta(
+            ySets,
+            m.daily_target,
+            capOk,
+            m.category,
+            readinessScore
+          );
+
+          if (suggestion.delta !== 0) {
+            const nextTarget = Math.max(1, m.daily_target + suggestion.delta);
+            const { error } = await supabase
+              .from("movements")
+              .update({ daily_target: nextTarget, updated_at: new Date().toISOString() })
+              .eq("id", m.id);
+            if (!error) {
+              const effectiveDate = format(todayStart, "yyyy-MM-dd");
+              await supabase.from("movement_target_history").upsert(
+                {
+                  user_id: userId,
+                  movement_id: m.id,
+                  category: m.category,
+                  date: effectiveDate,
+                  target: nextTarget,
+                },
+                { onConflict: "movement_id,date" }
+              );
+              anyUpdated = true;
+              toast.success(
+                `${cat.charAt(0).toUpperCase() + cat.slice(1)} target: ${m.daily_target} → ${nextTarget} (${suggestion.reason})`
+              );
+            }
+          }
+        }
+
+        // Re-fetch movements if any target was updated
+        if (anyUpdated) {
+          const refetch = await supabase.from("movements").select("*").eq("user_id", userId);
+          movementList = (refetch.data ?? movementList) as Movement[];
+        }
+      } catch {
+        // Ignore auto-adjust errors to avoid blocking dashboard load
+      }
 
       // Fetch sets for selected day
       const dayStart = startOfDay(selectedDate);
@@ -80,26 +182,13 @@ export function DashboardContent({ userId }: DashboardContentProps) {
         .eq("dismissed", false)
         .eq("completed", false);
 
-      // Check for weekly reviews
-      if (isTodayMonday()) {
-        const previousWeekStart = getPreviousWeekStart();
-        const { data: reviews } = await supabase
-          .from("weekly_reviews")
-          .select("category")
-          .eq("user_id", userId)
-          .eq("week_start_date", previousWeekStart);
-
-        const reviewedCategories = new Set(reviews?.map((r) => r.category) || []);
-        const movementCategories = movements?.map((m) => m.category) || [];
-        const needsReview = movementCategories.filter((cat) => !reviewedCategories.has(cat));
-        setNeedsWeeklyReview(needsReview as MovementCategory[]);
-      }
+      // Weekly reviews removed
 
       // Build progress data for each category
       const categories: MovementCategory[] = ["push", "pull", "legs"];
       const progressData: CategoryProgress[] = await Promise.all(
         categories.map(async (category) => {
-          const movement = movements?.find((m) => m.category === category);
+          const movement = movementList.find((m) => m.category === category);
           const sets = todaySets?.filter((s) => s.category === category) || [];
           const currentReps = sets.reduce((sum, set) => sum + set.reps, 0);
           const prompt = prompts?.find((p) => p.category === category);
@@ -218,31 +307,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
 
   return (
     <div className="space-y-6">
-      {/* Weekly Review Banner */}
-      {needsWeeklyReview.length > 0 && (
-        <Card className="border-primary bg-primary/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5" />
-              Weekly Review Available
-            </CardTitle>
-            <CardDescription>
-              Complete your weekly reviews to update your training targets
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {needsWeeklyReview.map((category) => (
-                <Link key={category} href={`/weekly-review/${category}`}>
-                  <Button variant="default" size="sm">
-                    Review {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Weekly Review Banner removed */}
 
       {/* Movement Cards */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -252,9 +317,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
       </div>
 
       {/* Desktop-only: Render stats below movement cards */}
-      {isDesktop && (
-        <StatsContent userId={userId} />
-      )}
+      {isDesktop && <StatsContent userId={userId} />}
 
       {/* Max Effort Prompt Modal */}
       {activePrompt && (
@@ -344,15 +407,18 @@ function MovementCard({
           <div className="flex items-center gap-2">
             {(() => {
               const hasAnySetToday = currentReps > 0;
-              const showArrow = typeof streakPrevDays === "number" && !hasAnySetToday && streakPrevDays > 0;
+              const showArrow =
+                typeof streakPrevDays === "number" && !hasAnySetToday && streakPrevDays > 0;
               const realized = typeof streakDays === "number" ? streakDays : 0;
               const potential = typeof streakPrevDays === "number" ? streakPrevDays + 1 : 0;
               const shouldShowChip = showArrow || realized > 0;
               if (!shouldShowChip) return null;
 
               const base = "text-xs rounded border px-1.5 py-0.5 flex items-center gap-1";
-              const done = "text-green-600 dark:text-green-400 border-green-300/50 dark:border-green-700/50";
-              const prog = "text-amber-600 dark:text-amber-400 border-amber-300/50 dark:border-amber-700/50";
+              const done =
+                "text-green-600 dark:text-green-400 border-green-300/50 dark:border-green-700/50";
+              const prog =
+                "text-amber-600 dark:text-amber-400 border-amber-300/50 dark:border-amber-700/50";
 
               if (isComplete && realized > 0) {
                 return (
@@ -371,9 +437,7 @@ function MovementCard({
                       {streakPrevDays} → {potential} Day Streak
                     </>
                   ) : (
-                    <>
-                      {realized} Day Streak
-                    </>
+                    <>{realized} Day Streak</>
                   )}
                 </span>
               );
