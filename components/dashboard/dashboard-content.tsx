@@ -414,15 +414,34 @@ export function DashboardContent({ userId }: DashboardContentProps) {
 
         {/* Desktop stats skeleton */}
         {isDesktop && (
-          <Card>
-            <CardHeader>
-              <div className="h-7 w-48 animate-pulse rounded bg-muted"></div>
-              <div className="mt-2 h-4 w-64 animate-pulse rounded bg-muted"></div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[360px] w-full animate-pulse rounded bg-muted"></div>
-            </CardContent>
-          </Card>
+          <>
+            {/* Interactive title skeleton */}
+            <div className="flex items-center justify-center gap-2">
+              <div className="h-5 w-48 animate-pulse rounded bg-muted"></div>
+            </div>
+            
+            {/* 3 chart skeletons */}
+            <div className="grid gap-4 md:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <Card key={i}>
+                  <CardHeader className="pb-2">
+                    <div className="mx-auto h-5 w-32 animate-pulse rounded bg-muted"></div>
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <div className="h-[300px] w-full animate-pulse rounded bg-muted"></div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            {/* Chart options skeleton */}
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <div className="h-5 w-24 animate-pulse rounded bg-muted"></div>
+              <div className="h-5 w-24 animate-pulse rounded bg-muted"></div>
+              <div className="h-5 w-20 animate-pulse rounded bg-muted"></div>
+              <div className="h-5 w-28 animate-pulse rounded bg-muted"></div>
+            </div>
+          </>
         )}
       </div>
     );

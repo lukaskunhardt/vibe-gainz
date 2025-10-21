@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { MovementCategory, Movement, Set as WorkoutSet, BodyWeight } from "@/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -19,7 +19,13 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ListFilter } from "lucide-react";
+import { ListFilter, Info } from "lucide-react";
+import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
 import {
   Line,
@@ -63,7 +69,7 @@ interface StatsData {
 }
 
 type ChartRow = {
-  date: string;
+          date: string;
   total: number;
   readiness?: number;
   target?: number;
@@ -82,7 +88,7 @@ interface SingleCategoryChartProps {
   readinessByDate: Record<string, number> | undefined;
   targetHistory: Array<{ date: string; target: number }> | undefined;
   bodyWeightByDate: Record<string, number> | undefined;
-  viewMode: "stacked" | "biggest";
+  viewMode: "stacked" | "max";
   showReadiness: boolean;
   showTarget: boolean;
   showTrend: boolean;
@@ -93,7 +99,7 @@ function SingleCategoryChart({
   category,
   movement,
   categoryStats,
-  readinessByDate,
+      readinessByDate,
   targetHistory,
   bodyWeightByDate,
   viewMode,
@@ -128,11 +134,6 @@ function SingleCategoryChart({
     }
     return `${effectiveSelection.length} selected`;
   }, [effectiveSelection, exerciseOptions]);
-
-  const categoryName = useMemo(
-    () => category.charAt(0).toUpperCase() + category.slice(1),
-    [category]
-  );
 
   const chartData: ChartRow[] = useMemo(() => {
     if (!categoryStats) return [];
@@ -229,127 +230,192 @@ function SingleCategoryChart({
     showBodyWeight && chartDataWithTrend.some((row) => typeof row.bodyWeight === "number");
   const showTargetLine = showTarget && movement && targetHistory && targetHistory.length > 0;
 
-  interface CustomTooltipProps {
-    active?: boolean;
-    payload?: Array<{ payload: ChartRow }>;
-    label?: string | number;
-  }
+                interface CustomTooltipProps {
+                  active?: boolean;
+                  payload?: Array<{ payload: ChartRow }>;
+                  label?: string | number;
+                }
 
-  const CustomTooltip = ({ active, label, payload }: CustomTooltipProps) => {
-    if (!active || !payload || payload.length === 0) return null;
-    const data = (payload[0]?.payload as ChartRow) || ({} as ChartRow);
-    const dateLabel = label ? new Date(String(label)).toLocaleDateString() : "";
+                const CustomTooltip = ({ active, label, payload }: CustomTooltipProps) => {
+                  if (!active || !payload || payload.length === 0) return null;
+                  const data = (payload[0]?.payload as ChartRow) || ({} as ChartRow);
+                  const dateLabel = label ? new Date(String(label)).toLocaleDateString() : "";
 
-    const stackedSets: Array<{ reps: number; rpe: number; isMax: boolean }> = [];
-    if (viewMode === "stacked") {
-      for (let i = 1; i <= maxSetsForChart; i++) {
-        const reps = data[`s${i}_reps`] as number | undefined;
-        if (typeof reps !== "number") continue;
-        const rpe = data[`s${i}_rpe`] as number | undefined;
-        const isMax = data[`s${i}_max`] as boolean | undefined;
-        stackedSets.push({
-          reps,
-          rpe: typeof rpe === "number" ? rpe : 0,
-          isMax: !!isMax,
-        });
-      }
-    }
+                  const stackedSets: Array<{ reps: number; rpe: number; isMax: boolean }> = [];
+                  if (viewMode === "stacked") {
+                    for (let i = 1; i <= maxSetsForChart; i++) {
+                      const reps = data[`s${i}_reps`] as number | undefined;
+                      if (typeof reps !== "number") continue;
+                      const rpe = data[`s${i}_rpe`] as number | undefined;
+                      const isMax = data[`s${i}_max`] as boolean | undefined;
+                      stackedSets.push({
+                        reps,
+                        rpe: typeof rpe === "number" ? rpe : 0,
+                        isMax: !!isMax,
+                      });
+                    }
+                  }
 
-    return (
-      <div className="rounded-md border bg-card p-3 shadow-sm">
-        <div className="mb-2 text-xs text-muted-foreground">{dateLabel}</div>
-        {viewMode === "stacked" ? (
-          <>
-            <div className="text-sm font-medium">Total: {data.total} reps</div>
-            <div className="mt-2 space-y-1">
-              {stackedSets.map((set, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm">
-                  <span
-                    className="inline-block h-3 w-3 rounded"
-                    style={{ backgroundColor: colorForRPE(set.rpe, set.isMax) }}
-                  />
-                  <span>
-                    Set {idx + 1}: {set.reps} reps
-                  </span>
-                  <span className="text-xs text-muted-foreground">RPE {set.rpe}</span>
-                  {set.isMax && (
-                    <span className="ml-1 rounded bg-purple-100 px-1.5 py-0.5 text-xs text-purple-600 dark:bg-purple-900/30 dark:text-purple-200">
-                      Max effort
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </>
+                  return (
+                    <div className="rounded-md border bg-card p-3 shadow-sm">
+                      <div className="mb-2 text-xs text-muted-foreground">{dateLabel}</div>
+                      {viewMode === "stacked" ? (
+                        <>
+                          <div className="text-sm font-medium">Total: {data.total} reps</div>
+                          <div className="mt-2 space-y-1">
+                            {stackedSets.map((set, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-sm">
+                                <span
+                                  className="inline-block h-3 w-3 rounded"
+                                  style={{ backgroundColor: colorForRPE(set.rpe, set.isMax) }}
+                                />
+                                <span>
+                                  Set {idx + 1}: {set.reps} reps
+                                </span>
+                                <span className="text-xs text-muted-foreground">RPE {set.rpe}</span>
+                                {set.isMax && (
+                                  <span className="ml-1 rounded bg-purple-100 px-1.5 py-0.5 text-xs text-purple-600 dark:bg-purple-900/30 dark:text-purple-200">
+                                    Max effort
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </>
         ) : (
           <div className="space-y-1 text-sm">
-            <div className="font-medium">Biggest set: {data.maxReps ?? 0} reps</div>
+            <div className="font-medium">Max reps: {data.maxReps ?? 0}</div>
             <div className="text-xs text-muted-foreground">RPE {data.maxRpe ?? 0}</div>
             {data.maxIsMax && (
               <div className="text-xs text-purple-600 dark:text-purple-300">Max effort set</div>
             )}
           </div>
         )}
-        {hasReadinessLine && typeof data.readiness === "number" && (
+                      {hasReadinessLine && typeof data.readiness === "number" && (
           <div className="mt-2 text-xs text-muted-foreground">Readiness: {data.readiness}</div>
         )}
         {hasBodyWeightLine && typeof data.bodyWeight === "number" && (
-          <div className="mt-2 text-xs text-muted-foreground">
+                        <div className="mt-2 text-xs text-muted-foreground">
             Body weight: {data.bodyWeight.toFixed(1)} kg
-          </div>
-        )}
-        {showTrend && typeof data.trend === "number" && (
-          <div className="text-xs text-muted-foreground">
-            7-day trend: {data.trend.toFixed(1)} reps
-          </div>
-        )}
-        {showTargetLine && typeof data.target === "number" && (
+                        </div>
+                      )}
+                      {showTrend && typeof data.trend === "number" && (
+                        <div className="text-xs text-muted-foreground">
+                          7-day trend: {data.trend.toFixed(1)} reps
+                        </div>
+                      )}
+                      {showTargetLine && typeof data.target === "number" && (
           <div className="text-xs text-muted-foreground">Target: {data.target} reps</div>
-        )}
-      </div>
-    );
-  };
+                      )}
+                    </div>
+                  );
+                };
 
-  const CustomLegend = () => (
-    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-      {RPE_LEGEND.map((item) => (
-        <div key={item.label} className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded" style={{ backgroundColor: item.color }} />
-          <span className="text-muted-foreground">{item.label}</span>
-        </div>
-      ))}
-      {hasReadinessLine && (
-        <div className="flex items-center gap-1.5">
-          <span
-            className="inline-block h-3 w-3 rounded"
-            style={{ backgroundColor: "hsl(var(--primary))" }}
-          />
-          <span className="text-muted-foreground">Readiness (1–5)</span>
-        </div>
-      )}
-      {hasBodyWeightLine && (
-        <div className="flex items-center gap-1.5">
-          <span
-            className="inline-block h-3 w-3 rounded"
-            style={{ backgroundColor: "hsl(var(--primary))" }}
-          />
-          <span className="text-muted-foreground">Body weight (kg)</span>
-        </div>
-      )}
-      {showTargetLine && (
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4 rounded bg-muted-foreground" />
-          <span className="text-muted-foreground">Target volume</span>
-        </div>
-      )}
-      {showTrend && (
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-0.5 w-4 rounded bg-sky-500 dark:bg-sky-400" />
-          <span className="text-muted-foreground">7-day trend</span>
-        </div>
-      )}
-    </div>
-  );
+                const CustomLegend = () => (
+                  <div className="mt-2 flex items-center justify-between px-2">
+                    <TooltipProvider>
+                      <UITooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex cursor-help items-center gap-1.5 text-xs">
+                            <Info className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-muted-foreground">Legend</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <div className="space-y-2">
+                            <div>
+                              <div className="mb-1 text-xs font-semibold">RPE Colors</div>
+                              <div className="space-y-1">
+                                {RPE_LEGEND.map((item) => (
+                                  <div key={item.label} className="flex items-center gap-2">
+                                    <span
+                                      className="inline-block h-3 w-3 rounded"
+                                      style={{ backgroundColor: item.color }}
+                                    />
+                                    <span className="text-xs">{item.label}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            {(hasReadinessLine || hasBodyWeightLine || showTargetLine || showTrend) && (
+                              <div>
+                                <div className="mb-1 text-xs font-semibold">Overlays</div>
+                                <div className="space-y-1">
+                                  {hasReadinessLine && (
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className="inline-block h-3 w-3 rounded"
+                                        style={{ backgroundColor: "hsl(var(--primary))" }}
+                                      />
+                                      <span className="text-xs">Readiness (1-5)</span>
+                                    </div>
+                                  )}
+                                  {hasBodyWeightLine && (
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className="inline-block h-3 w-3 rounded"
+                                        style={{ backgroundColor: "hsl(var(--primary))" }}
+                                      />
+                                      <span className="text-xs">Body weight (kg)</span>
+                                    </div>
+                                  )}
+                                  {showTargetLine && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="inline-block h-0.5 w-4 rounded bg-muted-foreground" />
+                                      <span className="text-xs">Target volume</span>
+                                    </div>
+                                  )}
+                                  {showTrend && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="inline-block h-0.5 w-4 rounded bg-sky-500" />
+                                      <span className="text-xs">7-day trend</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </UITooltip>
+                    </TooltipProvider>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-auto py-1 text-xs">
+                          <ListFilter className="mr-1 h-3 w-3" />
+                          {exerciseSummary}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-60">
+                        {exerciseOptions.map((option) => {
+                          const checked = effectiveSelection.includes(option.id);
+                          return (
+                            <DropdownMenuCheckboxItem
+                              key={option.id}
+                              checked={checked}
+                              onCheckedChange={(next) => {
+                                setSelectedExercises((prev) => {
+                                  const isChecked = Boolean(next);
+                                  if (isChecked) {
+                                    const set = new Set(prev);
+                                    set.add(option.id);
+                                    return Array.from(set);
+                                  }
+                                  const filtered = prev.filter((id) => id !== option.id);
+                                  if (filtered.length === 0) {
+                                    return exerciseOptions.map((ex) => ex.id);
+                                  }
+                                  return filtered;
+                                });
+                              }}
+                            >
+                              {option.name}
+                            </DropdownMenuCheckboxItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                );
 
   // Calculate Y-axis domain for body weight
   const bodyWeightDomain = useMemo(() => {
@@ -363,136 +429,106 @@ function SingleCategoryChart({
     return [Math.floor(min - 2), Math.ceil(max + 2)];
   }, [chartDataWithTrend, hasBodyWeightLine]);
 
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>{categoryName} Training Load</CardTitle>
-            <CardDescription>
-              {viewMode === "stacked"
-                ? "Stacked daily sets with optional overlays."
-                : "Biggest set per day with optional overlays."}
-            </CardDescription>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <ListFilter className="h-4 w-4" />
-                <span>{exerciseSummary}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
-              {exerciseOptions.map((option) => {
-                const checked = effectiveSelection.includes(option.id);
+  const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
+  const chartTitle = viewMode === "stacked" 
+    ? `Total ${categoryName} Volume` 
+    : `Max ${categoryName} Reps`;
+
                 return (
-                  <DropdownMenuCheckboxItem
-                    key={option.id}
-                    checked={checked}
-                    onCheckedChange={(next) => {
-                      setSelectedExercises((prev) => {
-                        const isChecked = Boolean(next);
-                        if (isChecked) {
-                          const set = new Set(prev);
-                          set.add(option.id);
-                          return Array.from(set);
-                        }
-                        const filtered = prev.filter((id) => id !== option.id);
-                        if (filtered.length === 0) {
-                          return exerciseOptions.map((ex) => ex.id);
-                        }
-                        return filtered;
-                      });
-                    }}
-                  >
-                    {option.name}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-center text-base font-medium">{chartTitle}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-1 pb-2">
         {!hasChartData ? (
           <div className="text-sm text-muted-foreground">
             No training data yet for this selection.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartDataWithTrend} barCategoryGap={16} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="date"
-                tickFormatter={(value) =>
-                  new Date(value).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })
-                }
-              />
-              <YAxis yAxisId="left" allowDecimals={false} />
-              {(hasReadinessLine || hasBodyWeightLine) && (
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  domain={hasBodyWeightLine ? bodyWeightDomain : [1, 5]}
-                  allowDecimals={false}
-                  tickFormatter={hasBodyWeightLine ? (value) => `${value} kg` : undefined}
-                />
-              )}
-              <Tooltip content={<CustomTooltip />} />
-              <Legend content={<CustomLegend />} />
-
-              {viewMode === "stacked" && maxSetsForChart > 0 ? (
-                Array.from({ length: maxSetsForChart }).map((_, idx) => {
-                  const key = `s${idx + 1}_reps`;
-                  return (
-                    <Bar
-                      key={key}
-                      yAxisId="left"
-                      dataKey={key}
-                      stackId="sets"
-                      radius={idx === maxSetsForChart - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                    >
-                      {chartDataWithTrend.map((entry, index) => (
-                        <Cell
-                          key={`${key}-${index}`}
-                          fill={colorForRPE(
-                            entry[`s${idx + 1}_rpe`] as number | undefined,
-                            entry[`s${idx + 1}_max`] as boolean | undefined
-                          )}
-                          stroke="hsl(var(--card))"
-                          strokeWidth={1}
-                        />
-                      ))}
-                    </Bar>
-                  );
-                })
-              ) : (
-                <Bar yAxisId="left" dataKey="maxReps" radius={[4, 4, 0, 0]}>
-                  {chartDataWithTrend.map((entry, index) => (
-                    <Cell
-                      key={`max-${index}`}
-                      fill={colorForRPE(entry.maxRpe ?? 0, entry.maxIsMax ?? false)}
-                      stroke="hsl(var(--card))"
-                      strokeWidth={1}
+                  <BarChart data={chartDataWithTrend} barCategoryGap={16} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(value) =>
+                        new Date(value).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      }
                     />
-                  ))}
-                </Bar>
-              )}
+                    <YAxis 
+                      yAxisId="left" 
+                      allowDecimals={false}
+                      label={{ value: 'Reps', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+                    />
+              {(hasReadinessLine || hasBodyWeightLine) && (
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                  domain={hasBodyWeightLine ? bodyWeightDomain : [1, 5]}
+                        allowDecimals={false}
+                  tickFormatter={hasBodyWeightLine ? (value) => `${value} kg` : undefined}
+                        label={{ 
+                          value: hasBodyWeightLine ? 'Body Weight (kg)' : 'Readiness', 
+                          angle: 90, 
+                          position: 'insideRight',
+                          style: { textAnchor: 'middle' }
+                        }}
+                      />
+                    )}
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend content={<CustomLegend />} />
 
-              {hasReadinessLine && (
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="readiness"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Readiness"
-                />
-              )}
+                    {viewMode === "stacked" && maxSetsForChart > 0 ? (
+                      Array.from({ length: maxSetsForChart }).map((_, idx) => {
+                        const key = `s${idx + 1}_reps`;
+                        return (
+                          <Bar
+                            key={key}
+                            yAxisId="left"
+                            dataKey={key}
+                            stackId="sets"
+                            radius={idx === maxSetsForChart - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                          >
+                            {chartDataWithTrend.map((entry, index) => (
+                              <Cell
+                                key={`${key}-${index}`}
+                                fill={colorForRPE(
+                                  entry[`s${idx + 1}_rpe`] as number | undefined,
+                                  entry[`s${idx + 1}_max`] as boolean | undefined
+                                )}
+                                stroke="hsl(var(--card))"
+                                strokeWidth={1}
+                              />
+                            ))}
+                          </Bar>
+                        );
+                      })
+                    ) : (
+                      <Bar yAxisId="left" dataKey="maxReps" radius={[4, 4, 0, 0]}>
+                        {chartDataWithTrend.map((entry, index) => (
+                          <Cell
+                            key={`max-${index}`}
+                            fill={colorForRPE(entry.maxRpe ?? 0, entry.maxIsMax ?? false)}
+                            stroke="hsl(var(--card))"
+                            strokeWidth={1}
+                          />
+                        ))}
+                      </Bar>
+                    )}
+
+                    {hasReadinessLine && (
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="readiness"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        dot={false}
+                        name="Readiness"
+                      />
+                    )}
               {hasBodyWeightLine && (
                 <Line
                   yAxisId="right"
@@ -504,34 +540,34 @@ function SingleCategoryChart({
                   name="Body Weight"
                 />
               )}
-              {showTargetLine && (
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="target"
-                  stroke="hsl(var(--muted-foreground))"
-                  strokeDasharray="4 4"
-                  strokeWidth={1.5}
-                  dot={false}
-                  name="Target"
-                />
-              )}
-              {showTrend && (
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="trend"
-                  stroke="#0ea5e9"
-                  strokeWidth={2}
-                  dot={false}
-                  name="7-day trend"
-                />
-              )}
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-      </CardContent>
-    </Card>
+                    {showTargetLine && (
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="target"
+                        stroke="hsl(var(--muted-foreground))"
+                        strokeDasharray="4 4"
+                        strokeWidth={1.5}
+                        dot={false}
+                        name="Target"
+                      />
+                    )}
+                    {showTrend && (
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="trend"
+                        stroke="#0ea5e9"
+                        strokeWidth={2}
+                        dot={false}
+                        name="7-day trend"
+                      />
+                    )}
+                  </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
   );
 }
 
@@ -540,7 +576,7 @@ export function StatsContent({ userId }: StatsContentProps) {
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<MovementCategory>("push");
-  const [viewMode, setViewMode] = useState<"stacked" | "biggest">("stacked");
+  const [viewMode, setViewMode] = useState<"stacked" | "max">("max");
   const [showReadiness, setShowReadiness] = useState(true);
   const [showTarget, setShowTarget] = useState(true);
   const [showTrend, setShowTrend] = useState(true);
@@ -776,11 +812,10 @@ export function StatsContent({ userId }: StatsContentProps) {
         <div className={isDesktop ? "grid gap-4 md:grid-cols-3" : ""}>
           {(isDesktop ? [1, 2, 3] : [1]).map((i) => (
             <Card key={i}>
-              <CardHeader>
-                <div className="h-7 w-48 animate-pulse rounded bg-muted"></div>
-                <div className="mt-2 h-4 w-96 animate-pulse rounded bg-muted"></div>
+              <CardHeader className="pb-2">
+                <div className="mx-auto h-5 w-32 animate-pulse rounded bg-muted"></div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pb-2">
                 <div className="h-[300px] w-full animate-pulse rounded bg-muted"></div>
               </CardContent>
             </Card>
@@ -794,78 +829,41 @@ export function StatsContent({ userId }: StatsContentProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="mb-2 text-3xl font-bold">Progress &amp; Statistics</h1>
-        <p className="text-muted-foreground">Track your calisthenics journey</p>
+      {/* Interactive Title */}
+      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+        <span>Show chart data for</span>
+        <Select
+          value={viewMode}
+          onValueChange={(value) => setViewMode(value as "stacked" | "max")}
+        >
+          <SelectTrigger className="h-auto w-auto border-none bg-transparent p-0 font-medium text-foreground hover:text-primary focus:ring-0 focus:ring-offset-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="stacked">total daily volume</SelectItem>
+            <SelectItem value="max">max reps</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Synchronized Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Mobile: Category selector */}
-          {!isDesktop && (
-            <Select
-              value={category}
-              onValueChange={(value) => setCategory(value as MovementCategory)}
-            >
-              <SelectTrigger size="sm">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="push">Push</SelectItem>
-                <SelectItem value="pull">Pull</SelectItem>
-                <SelectItem value="legs">Legs</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* View Mode selector */}
+      {/* Mobile Category selector */}
+      {!isDesktop && (
+        <div>
           <Select
-            value={viewMode}
-            onValueChange={(value) => setViewMode(value as "stacked" | "biggest")}
+            value={category}
+            onValueChange={(value) => setCategory(value as MovementCategory)}
           >
             <SelectTrigger size="sm">
-              <SelectValue />
+              <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="stacked">Stacked sets</SelectItem>
-              <SelectItem value="biggest">Biggest set</SelectItem>
+              <SelectItem value="push">Push</SelectItem>
+              <SelectItem value="pull">Pull</SelectItem>
+              <SelectItem value="legs">Legs</SelectItem>
             </SelectContent>
           </Select>
         </div>
-
-        {/* Synchronized Toggles */}
-        <div className="flex flex-wrap items-center gap-4">
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Checkbox
-              checked={showReadiness}
-              onCheckedChange={(checked) => handleReadinessToggle(Boolean(checked))}
-            />
-            Readiness line
-          </label>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Checkbox
-              checked={showTarget}
-              onCheckedChange={(checked) => setShowTarget(Boolean(checked))}
-            />
-            Target line
-          </label>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Checkbox
-              checked={showTrend}
-              onCheckedChange={(checked) => setShowTrend(Boolean(checked))}
-            />
-            7-day trend
-          </label>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Checkbox
-              checked={showBodyWeight}
-              onCheckedChange={(checked) => handleBodyWeightToggle(Boolean(checked))}
-            />
-            Body weight line
-          </label>
-        </div>
-      </div>
+      )}
 
       {/* Charts */}
       {isDesktop ? (
@@ -907,6 +905,38 @@ export function StatsContent({ userId }: StatsContentProps) {
           showBodyWeight={showBodyWeight}
         />
       )}
+
+      {/* Chart Options */}
+      <div className="flex flex-wrap items-center justify-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={showReadiness}
+              onCheckedChange={(checked) => handleReadinessToggle(Boolean(checked))}
+            />
+            Readiness line
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={showTarget}
+              onCheckedChange={(checked) => setShowTarget(Boolean(checked))}
+            />
+            Target line
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={showTrend}
+              onCheckedChange={(checked) => setShowTrend(Boolean(checked))}
+            />
+            7-day trend
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={showBodyWeight}
+              onCheckedChange={(checked) => handleBodyWeightToggle(Boolean(checked))}
+            />
+            Body weight line
+          </label>
+      </div>
     </div>
   );
 }
