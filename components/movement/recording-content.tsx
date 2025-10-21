@@ -63,14 +63,40 @@ export function RecordingContent({
     setLoading(true);
     try {
       const supabase = createClient();
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
 
-      // Fetch movement
-      const { data: movementData } = await supabase
-        .from("movements")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("category", category)
-        .single();
+      // OPTIMIZATION: Parallelize all queries
+      const [{ data: movementData }, { data: targetData }, { data: setsData }] = await Promise.all([
+        // Fetch movement
+        supabase
+          .from("movements")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("category", category)
+          .single(),
+        // Fetch current target from history
+        supabase
+          .from("movement_target_history")
+          .select("target")
+          .eq("user_id", userId)
+          .lte("date", todayStr)
+          .order("date", { ascending: false })
+          .limit(1),
+        // Fetch today's sets
+        supabase
+          .from("sets")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("category", category)
+          .gte("logged_at", todayStart.toISOString())
+          .lte("logged_at", todayEnd.toISOString())
+          .order("set_number", { ascending: true }),
+      ]);
 
       // If no movement exists and we're in max effort mode with initialExercise, allow it
       if (!movementData) {
@@ -93,35 +119,9 @@ export function RecordingContent({
       let target = 0;
       if (movementData) {
         setMovement(movementData);
-
-        // Fetch current target from history
-        const today = new Date();
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-        const { data: targetData } = await supabase
-          .from("movement_target_history")
-          .select("target")
-          .eq("movement_id", movementData.id)
-          .lte("date", todayStr)
-          .order("date", { ascending: false })
-          .limit(1);
         target = targetData?.[0]?.target ?? 0;
         setCurrentTarget(target);
       }
-
-      // Fetch today's sets
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const todayEnd = new Date();
-      todayEnd.setHours(23, 59, 59, 999);
-
-      const { data: setsData } = await supabase
-        .from("sets")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("category", category)
-        .gte("logged_at", todayStart.toISOString())
-        .lte("logged_at", todayEnd.toISOString())
-        .order("set_number", { ascending: true });
 
       setTodaySets(setsData || []);
 
@@ -386,11 +386,73 @@ export function RecordingContent({
 
   if (loading) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Loading...</p>
+      <div className="mx-auto max-w-2xl">
+        {/* Back button skeleton */}
+        <div className="mb-6">
+          <div className="h-9 w-40 animate-pulse rounded-md bg-muted"></div>
         </div>
+
+        <Card>
+          <CardHeader>
+            {/* Title skeleton */}
+            <div className="h-8 w-56 animate-pulse rounded bg-muted"></div>
+            {/* Description skeleton */}
+            <div className="mt-2 h-5 w-40 animate-pulse rounded bg-muted"></div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Progress bar skeleton (for regular sets) */}
+            {!isMaxEffort && (
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="h-4 w-32 animate-pulse rounded bg-muted"></div>
+                  <div className="h-4 w-20 animate-pulse rounded bg-muted"></div>
+                </div>
+                <div className="h-2 w-full animate-pulse rounded-full bg-muted"></div>
+              </div>
+            )}
+
+            {/* Recommended sets skeleton (for regular sets) */}
+            {!isMaxEffort && (
+              <div>
+                <div className="mb-2 h-4 w-36 animate-pulse rounded bg-muted"></div>
+                <div className="mb-3 h-3 w-full animate-pulse rounded bg-muted"></div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div
+                      key={i}
+                      className="h-24 animate-pulse rounded-lg border-2 border-dashed border-muted bg-muted/20"
+                    ></div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Rep counter skeleton */}
+            <div className="space-y-3">
+              <div className="h-4 w-16 animate-pulse rounded bg-muted"></div>
+              <div className="flex items-center justify-center gap-4">
+                <div className="h-16 w-16 animate-pulse rounded-md bg-muted"></div>
+                <div className="h-20 w-32 animate-pulse rounded bg-muted"></div>
+                <div className="h-16 w-16 animate-pulse rounded-md bg-muted"></div>
+              </div>
+            </div>
+
+            {/* RPE selector skeleton (for regular sets) */}
+            {!isMaxEffort && (
+              <div className="space-y-2">
+                <div className="h-4 w-24 animate-pulse rounded bg-muted"></div>
+                <div className="grid grid-cols-5 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+                    <div key={i} className="h-16 animate-pulse rounded-lg bg-muted"></div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Save button skeleton */}
+            <div className="h-12 w-full animate-pulse rounded-md bg-muted"></div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

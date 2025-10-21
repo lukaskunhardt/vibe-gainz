@@ -199,44 +199,44 @@ export function StatsContent({ userId }: StatsContentProps) {
     setLoading(true);
     try {
       const supabase = createClient();
-
-      const { data: movementsData } = await supabase
-        .from("movements")
-        .select("*")
-        .eq("user_id", userId);
-
-      setMovements(movementsData || []);
-
       const yearAgo = new Date();
       yearAgo.setDate(yearAgo.getDate() - 365);
 
-      const { data: sets } = await supabase
-        .from("sets")
-        .select("*")
-        .eq("user_id", userId)
-        .gte("logged_at", yearAgo.toISOString())
-        .order("logged_at", { ascending: true });
+      // OPTIMIZATION: Parallelize all queries
+      const [
+        { data: movementsData },
+        { data: sets },
+        { data: readiness },
+        { data: targets },
+        { data: bodyWeight },
+      ] = await Promise.all([
+        supabase.from("movements").select("*").eq("user_id", userId),
+        supabase
+          .from("sets")
+          .select("*")
+          .eq("user_id", userId)
+          .gte("logged_at", yearAgo.toISOString())
+          .order("logged_at", { ascending: true }),
+        supabase
+          .from("readiness")
+          .select("date, score")
+          .eq("user_id", userId)
+          .gte("date", yearAgo.toISOString().slice(0, 10))
+          .order("date", { ascending: true }),
+        supabase
+          .from("movement_target_history")
+          .select("category, date, target")
+          .eq("user_id", userId)
+          .order("date", { ascending: true }),
+        supabase
+          .from("body_weight")
+          .select("*")
+          .eq("user_id", userId)
+          .gte("date", yearAgo.toISOString().slice(0, 10))
+          .order("date", { ascending: true }),
+      ]);
 
-      const { data: readiness } = await supabase
-        .from("readiness")
-        .select("date, score")
-        .eq("user_id", userId)
-        .gte("date", yearAgo.toISOString().slice(0, 10))
-        .order("date", { ascending: true });
-
-      const { data: targets } = await supabase
-        .from("movement_target_history")
-        .select("category, date, target")
-        .eq("user_id", userId)
-        .order("date", { ascending: true });
-
-      const { data: bodyWeight } = await supabase
-        .from("body_weight")
-        .select("*")
-        .eq("user_id", userId)
-        .gte("date", yearAgo.toISOString().slice(0, 10))
-        .order("date", { ascending: true });
-
+      setMovements(movementsData || []);
       setBodyWeightData(bodyWeight || []);
 
       const statsData = processStats(
@@ -395,11 +395,37 @@ export function StatsContent({ userId }: StatsContentProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Loading your stats...</p>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div>
+          <div className="mb-2 h-9 w-64 animate-pulse rounded bg-muted"></div>
+          <div className="h-5 w-80 animate-pulse rounded bg-muted"></div>
         </div>
+
+        {/* Filter controls skeleton */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="h-10 w-24 animate-pulse rounded-md bg-muted"></div>
+            <div className="h-10 w-32 animate-pulse rounded-md bg-muted"></div>
+            <div className="h-10 w-40 animate-pulse rounded-md bg-muted"></div>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="h-5 w-32 animate-pulse rounded bg-muted"></div>
+            <div className="h-5 w-28 animate-pulse rounded bg-muted"></div>
+            <div className="h-5 w-24 animate-pulse rounded bg-muted"></div>
+          </div>
+        </div>
+
+        {/* Main chart skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="h-7 w-48 animate-pulse rounded bg-muted"></div>
+            <div className="mt-2 h-4 w-96 animate-pulse rounded bg-muted"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[360px] w-full animate-pulse rounded bg-muted"></div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

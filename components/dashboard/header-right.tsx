@@ -65,7 +65,7 @@ export function HeaderRight() {
           Friends
         </Button>
       </Link>
-      <Link href="/stats">
+      <Link href="/stats" prefetch={true}>
         <Button variant="ghost" size="sm">
           <BarChart2 className="mr-2 h-4 w-4" />
           Stats
@@ -99,7 +99,7 @@ export function HeaderRight() {
               </Link>
             </SheetClose>
             <SheetClose asChild>
-              <Link href="/stats">
+              <Link href="/stats" prefetch={true}>
                 <Button variant="ghost" className="w-full justify-start">
                   <BarChart2 className="mr-2 h-4 w-4" />
                   Stats
