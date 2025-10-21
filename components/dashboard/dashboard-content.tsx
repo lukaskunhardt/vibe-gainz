@@ -555,13 +555,7 @@ function MovementCard({
         {/* GIF Background on Hover */}
         {gifUrl && (
           <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-20">
-            <Image
-              src={gifUrl}
-              alt=""
-              fill
-              className="object-cover"
-              unoptimized
-            />
+            <Image src={gifUrl} alt="" fill className="object-cover" unoptimized />
           </div>
         )}
 
