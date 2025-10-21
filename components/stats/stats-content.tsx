@@ -577,8 +577,8 @@ export function StatsContent({ userId }: StatsContentProps) {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<MovementCategory>("push");
   const [viewMode, setViewMode] = useState<"stacked" | "max">("max");
-  const [showReadiness, setShowReadiness] = useState(true);
-  const [showTarget, setShowTarget] = useState(true);
+  const [showReadiness, setShowReadiness] = useState(false);
+  const [showTarget, setShowTarget] = useState(false);
   const [showTrend, setShowTrend] = useState(true);
   const [showBodyWeight, setShowBodyWeight] = useState(false);
   const isDesktop = useIsDesktop();
