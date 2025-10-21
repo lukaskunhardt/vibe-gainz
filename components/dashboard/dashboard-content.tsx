@@ -7,7 +7,7 @@ import { Movement, MovementCategory, MaxEffortPrompt, Set as WorkoutSet } from "
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Lock, Trophy, Plus, Info, CheckCircle, Flame } from "lucide-react";
+import { Lock, Trophy, Plus, CheckCircle, Flame } from "lucide-react";
 import { format, startOfDay, endOfDay, parseISO, isSameDay, addDays, subDays } from "date-fns";
 import { useSearchParams } from "next/navigation";
 import { MaxEffortPromptModal } from "./max-effort-prompt-modal";
@@ -419,7 +419,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
             <div className="flex items-center justify-center gap-2">
               <div className="h-5 w-48 animate-pulse rounded bg-muted"></div>
             </div>
-            
+
             {/* 3 chart skeletons */}
             <div className="grid gap-4 md:grid-cols-3">
               {[1, 2, 3].map((i) => (
@@ -433,7 +433,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
                 </Card>
               ))}
             </div>
-            
+
             {/* Chart options skeleton */}
             <div className="flex flex-wrap items-center justify-center gap-4">
               <div className="h-5 w-24 animate-pulse rounded bg-muted"></div>
@@ -454,7 +454,12 @@ export function DashboardContent({ userId }: DashboardContentProps) {
       {/* Movement Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {progress.map((item) => (
-          <MovementCard key={item.category} {...item} onRefresh={loadDashboardData} />
+          <MovementCard
+            key={item.category}
+            {...item}
+            onRefresh={loadDashboardData}
+            isDesktop={isDesktop}
+          />
         ))}
       </div>
 
@@ -475,6 +480,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
 
 interface MovementCardProps extends CategoryProgress {
   onRefresh: () => void;
+  isDesktop: boolean;
 }
 
 function MovementCard({
@@ -490,6 +496,7 @@ function MovementCard({
   movement,
   streakDays,
   streakPrevDays,
+  isDesktop,
 }: MovementCardProps) {
   const percentage = targetReps > 0 ? Math.min((currentReps / targetReps) * 100, 100) : 0;
   const isComplete = currentReps >= targetReps;
@@ -529,142 +536,131 @@ function MovementCard({
     maxEffortRepsToday && baselineMaxEffortReps ? maxEffortRepsToday - baselineMaxEffortReps : 0;
 
   return (
-    <Card
-      className={`relative overflow-hidden ${
-        hasMaxEffortToday
-          ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20"
-          : isComplete
-            ? "border-green-500 bg-green-50 dark:bg-green-950/20"
-            : ""
-      }`}
-    >
-      {hasMaxEffortPrompt && !hasMaxEffortToday && (
-        <div className="absolute right-2 top-2">
-          <Trophy className="h-6 w-6 animate-pulse text-yellow-500" />
-        </div>
-      )}
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>{categoryName}</span>
-          <div className="flex items-center gap-2">
-            {(() => {
-              const hasAnySetToday = currentReps > 0;
-              const showArrow =
-                typeof streakPrevDays === "number" && !hasAnySetToday && streakPrevDays > 0;
-              const realized = typeof streakDays === "number" ? streakDays : 0;
-              const potential = typeof streakPrevDays === "number" ? streakPrevDays + 1 : 0;
-              const shouldShowChip = showArrow || realized > 0;
-              if (!shouldShowChip) return null;
-
-              const base = "text-xs rounded border px-1.5 py-0.5 flex items-center gap-1";
-              const done =
-                "text-green-600 dark:text-green-400 border-green-300/50 dark:border-green-700/50";
-              const prog =
-                "text-amber-600 dark:text-amber-400 border-amber-300/50 dark:border-amber-700/50";
-
-              if (isComplete && realized > 0) {
-                return (
-                  <span className={`${base} ${done}`}>
-                    <CheckCircle className="h-4 w-4" />
-                    {realized} Day Streak
-                  </span>
-                );
-              }
-
-              return (
-                <span className={`${base} ${prog}`}>
-                  <Flame className="h-4 w-4" />
-                  {showArrow ? (
-                    <>
-                      {streakPrevDays} → {potential} Day Streak
-                    </>
-                  ) : (
-                    <>{realized} Day Streak</>
-                  )}
-                </span>
-              );
-            })()}
-            {hasMaxEffortToday && <Trophy className="h-5 w-5 text-purple-500" />}
-          </div>
-        </CardTitle>
-        <CardDescription className="truncate">{exerciseName}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {hasMaxEffortToday ? (
-          // Max Effort Indicator
-          <div className="space-y-2">
-            <div className="mb-2 flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-purple-500" />
-              <span className="text-lg font-semibold text-purple-700 dark:text-purple-300">
-                Max Effort Test
-              </span>
-            </div>
-            <div className="rounded-lg bg-purple-100 py-4 text-center dark:bg-purple-900/30">
-              <div className="mb-2 text-4xl font-bold text-purple-700 dark:text-purple-300">
-                {maxEffortRepsToday} reps
-              </div>
-              <div className="space-y-1 text-sm text-muted-foreground">
-                {diffFromPrevious !== 0 && (
-                  <div
-                    className={
-                      diffFromPrevious > 0
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-red-600 dark:text-red-400"
-                    }
-                  >
-                    {diffFromPrevious > 0 ? "+" : ""}
-                    {diffFromPrevious} from last test
-                  </div>
-                )}
-                {diffFromBaseline !== 0 && (
-                  <div
-                    className={
-                      diffFromBaseline > 0
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-red-600 dark:text-red-400"
-                    }
-                  >
-                    {diffFromBaseline > 0 ? "+" : ""}
-                    {diffFromBaseline} from baseline
-                  </div>
-                )}
-                {diffFromPrevious === 0 && diffFromBaseline === 0 && (
-                  <div className="text-muted-foreground">First max effort test!</div>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          // Normal Progress Bar
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-2xl font-bold">
-                {currentReps} / {targetReps}
-              </span>
-              <span className="text-sm text-muted-foreground">{Math.round(percentage)}%</span>
-            </div>
-            <Progress value={percentage} className="h-2" />
+    <Link href={`/movement/${category}/record`} prefetch={true} className="block">
+      <Card
+        className={`group relative cursor-pointer overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg ${
+          hasMaxEffortToday
+            ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20"
+            : isComplete
+              ? "border-green-500 bg-green-50 dark:bg-green-950/20"
+              : "hover:border-primary/50"
+        }`}
+      >
+        {hasMaxEffortPrompt && !hasMaxEffortToday && (
+          <div className="absolute right-2 top-2">
+            <Trophy className="h-6 w-6 animate-pulse text-yellow-500" />
           </div>
         )}
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>{categoryName}</span>
+            <div className="flex items-center gap-2">
+              {(() => {
+                const hasAnySetToday = currentReps > 0;
+                const showArrow =
+                  typeof streakPrevDays === "number" && !hasAnySetToday && streakPrevDays > 0;
+                const realized = typeof streakDays === "number" ? streakDays : 0;
+                const potential = typeof streakPrevDays === "number" ? streakPrevDays + 1 : 0;
+                const shouldShowChip = showArrow || realized > 0;
+                if (!shouldShowChip) return null;
 
-        <div className="grid grid-cols-2 gap-2">
-          <Link href={`/movement/${category}/record`} prefetch={true}>
-            <Button
-              className="w-full"
-              variant={isComplete || hasMaxEffortToday ? "outline" : "default"}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Log Set
-            </Button>
-          </Link>
-          <Link href={`/movement/${category}/${movement?.exercise_variation}/info`} prefetch={true}>
-            <Button className="w-full" variant="outline">
-              <Info className="mr-2 h-4 w-4" />
-              Info
-            </Button>
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
+                const base = "text-xs rounded border px-1.5 py-0.5 flex items-center gap-1";
+                const done =
+                  "text-green-600 dark:text-green-400 border-green-300/50 dark:border-green-700/50";
+                const prog =
+                  "text-amber-600 dark:text-amber-400 border-amber-300/50 dark:border-amber-700/50";
+
+                if (isComplete && realized > 0) {
+                  return (
+                    <span className={`${base} ${done}`}>
+                      <CheckCircle className="h-4 w-4" />
+                      {realized} Day Streak
+                    </span>
+                  );
+                }
+
+                return (
+                  <span className={`${base} ${prog}`}>
+                    <Flame className="h-4 w-4" />
+                    {showArrow ? (
+                      <>
+                        {streakPrevDays} → {potential} Day Streak
+                      </>
+                    ) : (
+                      <>{realized} Day Streak</>
+                    )}
+                  </span>
+                );
+              })()}
+              {hasMaxEffortToday && <Trophy className="h-5 w-5 text-purple-500" />}
+            </div>
+          </CardTitle>
+          <CardDescription className="truncate">{exerciseName}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {hasMaxEffortToday ? (
+            // Max Effort Indicator
+            <div className="space-y-2">
+              <div className="mb-2 flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-purple-500" />
+                <span className="text-lg font-semibold text-purple-700 dark:text-purple-300">
+                  Max Effort Test
+                </span>
+              </div>
+              <div className="rounded-lg bg-purple-100 py-4 text-center dark:bg-purple-900/30">
+                <div className="mb-2 text-4xl font-bold text-purple-700 dark:text-purple-300">
+                  {maxEffortRepsToday} reps
+                </div>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  {diffFromPrevious !== 0 && (
+                    <div
+                      className={
+                        diffFromPrevious > 0
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
+                      }
+                    >
+                      {diffFromPrevious > 0 ? "+" : ""}
+                      {diffFromPrevious} from last test
+                    </div>
+                  )}
+                  {diffFromBaseline !== 0 && (
+                    <div
+                      className={
+                        diffFromBaseline > 0
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
+                      }
+                    >
+                      {diffFromBaseline > 0 ? "+" : ""}
+                      {diffFromBaseline} from baseline
+                    </div>
+                  )}
+                  {diffFromPrevious === 0 && diffFromBaseline === 0 && (
+                    <div className="text-muted-foreground">First max effort test!</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Normal Progress Bar
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-2xl font-bold">
+                  {currentReps} / {targetReps}
+                </span>
+                <span className="text-sm text-muted-foreground">{Math.round(percentage)}%</span>
+              </div>
+              <Progress value={percentage} className="h-2" />
+            </div>
+          )}
+
+          <div className="flex items-center justify-center gap-2 rounded-md border border-dashed border-primary/40 bg-primary/5 py-2 text-sm font-medium text-primary transition-colors group-hover:border-primary group-hover:bg-primary/10">
+            <Plus className="h-4 w-4" />
+            <span>{isDesktop ? "Click" : "Tap"} to log set</span>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

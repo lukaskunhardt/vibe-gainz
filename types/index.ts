@@ -12,6 +12,7 @@ export interface ExerciseVariation {
 export interface FormCues {
   cues: string[];
   videoUrl: string;
+  gifUrl?: string; // Optional: Uploadthing GIF URL for exercise demonstration
 }
 
 export interface RecoveryScoreBreakdown {

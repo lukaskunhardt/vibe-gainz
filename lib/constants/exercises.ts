@@ -42,6 +42,16 @@ export const EXERCISE_VARIATIONS: Record<MovementCategory, ExerciseVariation[]> 
   ],
 };
 
+/**
+ * FORM_CUES: Exercise form guidance and media
+ *
+ * To add GIF demonstrations:
+ * 1. Upload your GIF to Uploadthing
+ * 2. Add the gifUrl field with your Uploadthing URL
+ *
+ * Example:
+ *   gifUrl: "https://utfs.io/f/your-file-id.gif"
+ */
 export const FORM_CUES: Record<string, FormCues> = {
   "wall-pushups": {
     cues: [
@@ -52,6 +62,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Keep body straight throughout",
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WALL_PUSHUP",
+    // gifUrl: "https://utfs.io/f/your-wall-pushups.gif", // Add your Uploadthing URL here
   },
   "incline-pushups": {
     cues: [
