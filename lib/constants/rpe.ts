@@ -20,11 +20,11 @@ export function colorForRPE(rpe: number | undefined, isMaxEffort?: boolean): str
 }
 
 export const RPE_LEGEND = [
+  { label: "RPE <6", color: RPE_COLORS.GRAY },
   { label: "RPE 6", color: RPE_COLORS.GREEN_6 },
   { label: "RPE 7", color: RPE_COLORS.GREEN_7 },
   { label: "RPE 8", color: RPE_COLORS.GREEN_8 },
   { label: "RPE 9", color: RPE_COLORS.ORANGE_9 },
   { label: "RPE 10", color: RPE_COLORS.RED_10 },
-  { label: "RPE <6", color: RPE_COLORS.GRAY },
   { label: "Max Effort", color: RPE_COLORS.PURPLE_MAX },
 ];
