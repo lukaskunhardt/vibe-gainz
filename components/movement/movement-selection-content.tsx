@@ -151,7 +151,7 @@ export function MovementSelectionContent({ userId, category }: MovementSelection
                       <div className="flex flex-1 items-center gap-3">
                         {/* Small GIF thumbnail if available */}
                         {formCues?.gifUrl && (
-                          <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                          <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                             <Image
                               src={formCues.gifUrl}
                               alt=""

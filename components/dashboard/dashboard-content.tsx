@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Movement, MovementCategory, MaxEffortPrompt, Set as WorkoutSet } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Lock, Trophy, Plus, CheckCircle, Flame } from "lucide-react";
 import { format, startOfDay, endOfDay, parseISO, isSameDay, addDays, subDays } from "date-fns";
 import { useSearchParams } from "next/navigation";
 import { MaxEffortPromptModal } from "./max-effort-prompt-modal";
-import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
+import { EXERCISE_VARIATIONS, FORM_CUES } from "@/lib/constants/exercises";
 import { StatsContent } from "@/components/stats/stats-content";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { isCapRelaxed, suggestDailyTargetDelta } from "@/lib/utils/recovery-daily";
@@ -535,6 +536,11 @@ function MovementCard({
   const diffFromBaseline =
     maxEffortRepsToday && baselineMaxEffortReps ? maxEffortRepsToday - baselineMaxEffortReps : 0;
 
+  // Get the GIF URL for the current exercise
+  const gifUrl = movement?.exercise_variation
+    ? FORM_CUES[movement.exercise_variation]?.gifUrl
+    : undefined;
+
   return (
     <Link href={`/movement/${category}/record`} prefetch={true} className="block">
       <Card
@@ -546,12 +552,25 @@ function MovementCard({
               : "hover:border-primary/50"
         }`}
       >
+        {/* GIF Background on Hover */}
+        {gifUrl && (
+          <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-20">
+            <Image
+              src={gifUrl}
+              alt=""
+              fill
+              className="object-cover"
+              unoptimized
+            />
+          </div>
+        )}
+
         {hasMaxEffortPrompt && !hasMaxEffortToday && (
-          <div className="absolute right-2 top-2">
+          <div className="absolute right-2 top-2 z-10">
             <Trophy className="h-6 w-6 animate-pulse text-yellow-500" />
           </div>
         )}
-        <CardHeader>
+        <CardHeader className="relative z-10">
           <CardTitle className="flex items-center justify-between">
             <span>{categoryName}</span>
             <div className="flex items-center gap-2">
@@ -597,7 +616,7 @@ function MovementCard({
           </CardTitle>
           <CardDescription className="truncate">{exerciseName}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="relative z-10 space-y-4">
           {hasMaxEffortToday ? (
             // Max Effort Indicator
             <div className="space-y-2">
