@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Info, TrendingUp, BookOpen, ArrowRight } from "lucide-react";
 import { Movement, MovementCategory, Set as WorkoutSet } from "@/types";
 import { suggestDailyTargetDelta, isCapRelaxed } from "@/lib/utils/recovery-daily";
@@ -27,6 +28,7 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
+  const [bodyWeight, setBodyWeight] = useState<string>("");
   const [previews, setPreviews] = useState<CategoryPreview[]>([]);
 
   useEffect(() => {
@@ -133,9 +135,20 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
     setSaving(true);
     try {
       const supabase = createClient();
+
+      // Save readiness score
       await supabase
         .from("readiness")
         .upsert({ user_id: userId, date, score: selected }, { onConflict: "user_id,date" });
+
+      // Save body weight if provided
+      if (bodyWeight && !isNaN(parseFloat(bodyWeight))) {
+        const weightKg = parseFloat(bodyWeight);
+        await supabase
+          .from("body_weight")
+          .upsert({ user_id: userId, date, weight_kg: weightKg }, { onConflict: "user_id,date" });
+      }
+
       router.replace("/dashboard");
     } finally {
       setSaving(false);
@@ -146,12 +159,16 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
     <div className="flex min-h-[60vh] items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>How do you feel today?</CardTitle>
+          <CardTitle>Daily Check-In</CardTitle>
           <CardDescription>
-            How ready to exercise are you? 1 = terrible, no energy. 5 = great, can really push.
+            Track your readiness and optionally log your body weight.
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 text-sm font-medium">How ready to exercise are you today?</div>
+          <p className="mb-4 text-sm text-muted-foreground">
+            1 = terrible, no energy. 5 = great, can really push.
+          </p>
           <ul className="mb-4 space-y-3">
             <li className="flex items-start gap-3">
               <span className="mt-0.5 text-muted-foreground">
@@ -201,6 +218,25 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
                 {n}
               </Button>
             ))}
+          </div>
+
+          {/* Body Weight Input */}
+          <div className="mt-6">
+            <label htmlFor="body-weight" className="mb-2 block text-sm font-medium">
+              Body Weight (optional)
+            </label>
+            <Input
+              id="body-weight"
+              type="number"
+              step="0.1"
+              min="0"
+              max="500"
+              placeholder="Weight (kg)"
+              value={bodyWeight}
+              onChange={(e) => setBodyWeight(e.target.value)}
+              disabled={saving}
+              className="w-full"
+            />
           </div>
 
           {/* Preview Section */}

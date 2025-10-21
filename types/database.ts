@@ -79,3 +79,11 @@ export interface MovementTargetHistory {
   target: number;
   created_at: string;
 }
+
+export interface BodyWeight {
+  id: string;
+  user_id: string;
+  date: string; // YYYY-MM-DD
+  weight_kg: number;
+  created_at: string;
+}

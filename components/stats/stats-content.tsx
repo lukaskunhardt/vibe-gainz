@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { MovementCategory, Movement, Set as WorkoutSet } from "@/types";
+import { MovementCategory, Movement, Set as WorkoutSet, BodyWeight } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,6 +23,7 @@ import { ListFilter } from "lucide-react";
 import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
 import {
   Line,
+  LineChart,
   BarChart,
   Bar,
   XAxis,
@@ -69,6 +70,8 @@ export function StatsContent({ userId }: StatsContentProps) {
   const [showReadiness, setShowReadiness] = useState(true);
   const [showTarget, setShowTarget] = useState(true);
   const [showTrend, setShowTrend] = useState(true);
+  const [showBodyWeight, setShowBodyWeight] = useState(false);
+  const [bodyWeightData, setBodyWeightData] = useState<BodyWeight[]>([]);
   const [selectedExercises, setSelectedExercises] = useState<string[]>(() =>
     EXERCISE_VARIATIONS["push"].map((ex) => ex.id)
   );
@@ -226,6 +229,15 @@ export function StatsContent({ userId }: StatsContentProps) {
         .select("category, date, target")
         .eq("user_id", userId)
         .order("date", { ascending: true });
+
+      const { data: bodyWeight } = await supabase
+        .from("body_weight")
+        .select("*")
+        .eq("user_id", userId)
+        .gte("date", yearAgo.toISOString().slice(0, 10))
+        .order("date", { ascending: true });
+
+      setBodyWeightData(bodyWeight || []);
 
       const statsData = processStats(
         sets || [],
@@ -492,6 +504,13 @@ export function StatsContent({ userId }: StatsContentProps) {
             />
             7-day trend
           </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              checked={showBodyWeight}
+              onCheckedChange={(checked) => setShowBodyWeight(Boolean(checked))}
+            />
+            Show body weight
+          </label>
         </div>
       </div>
 
@@ -744,6 +763,70 @@ export function StatsContent({ userId }: StatsContentProps) {
             <Button onClick={() => (window.location.href = `/movement/${category}/select`)}>
               Set Up Movement
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {showBodyWeight && bodyWeightData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Body Weight Progression</CardTitle>
+            <CardDescription>Track your body weight over time (kg)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={bodyWeightData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(value) =>
+                    new Date(value).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  }
+                />
+                <YAxis
+                  domain={[
+                    (dataMin: number) => Math.floor(dataMin - 2),
+                    (dataMax: number) => Math.ceil(dataMax + 2),
+                  ]}
+                  tickFormatter={(value) => `${value} kg`}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload || payload.length === 0) return null;
+                    const data = payload[0].payload as BodyWeight;
+                    return (
+                      <div className="rounded-md border bg-card p-3 shadow-sm">
+                        <div className="mb-1 text-xs text-muted-foreground">
+                          {new Date(data.date).toLocaleDateString()}
+                        </div>
+                        <div className="text-sm font-medium">{data.weight_kg.toFixed(1)} kg</div>
+                      </div>
+                    );
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="weight_kg"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {showBodyWeight && bodyWeightData.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-sm text-muted-foreground">
+              No body weight data logged yet. Start tracking in your daily check-in!
+            </p>
           </CardContent>
         </Card>
       )}
