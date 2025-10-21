@@ -66,3 +66,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes fillSegment {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--segment-width);
+  }
+}
