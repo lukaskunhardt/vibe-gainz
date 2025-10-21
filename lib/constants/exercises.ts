@@ -93,6 +93,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Maintain plank position (no sagging hips)",
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_REGULAR_PUSHUP",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbKJ8t7ZXdPBlcTFmYA23bzasuJftN4ovRW6VO",
   },
   "weighted-pushups": {
     cues: [
@@ -173,6 +174,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Squeeze shoulder blades at top",
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_REGULAR_PULLUP",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbXHbzq5ut5heSTVWzrsvMZ1bpmPK3adJfND28",
   },
   "weighted-pullups": {
     cues: [
@@ -233,6 +235,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Full hip extension at top",
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BODYWEIGHT_SQUAT",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbmC9KDsZH4Fp2xBVRWq1i3UZKJyszN8GCw9M5",
   },
   "bulgarian-split-squat": {
     cues: [
