@@ -23,7 +23,6 @@ import { ListFilter } from "lucide-react";
 import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
 import {
   Line,
-  LineChart,
   BarChart,
   Bar,
   XAxis,
@@ -36,6 +35,7 @@ import {
 } from "recharts";
 import { colorForRPE, RPE_LEGEND } from "@/lib/constants/rpe";
 import { format } from "date-fns";
+import { useIsDesktop } from "@/lib/hooks/use-media-query";
 
 interface StatsContentProps {
   userId: string;
@@ -59,6 +59,480 @@ interface StatsData {
   >;
   readinessByDate: Record<string, number>;
   targetsByCategory: Record<MovementCategory, Array<{ date: string; target: number }>>;
+  bodyWeightByDate: Record<string, number>;
+}
+
+type ChartRow = {
+  date: string;
+  total: number;
+  readiness?: number;
+  target?: number;
+  maxReps?: number;
+  maxRpe?: number;
+  maxIsMax?: boolean;
+  setCount?: number;
+  trend?: number;
+  bodyWeight?: number;
+} & Record<string, number | boolean | string | undefined>;
+
+interface SingleCategoryChartProps {
+  category: MovementCategory;
+  movement: Movement | null;
+  categoryStats: StatsData["byCategory"][MovementCategory] | undefined;
+  readinessByDate: Record<string, number> | undefined;
+  targetHistory: Array<{ date: string; target: number }> | undefined;
+  bodyWeightByDate: Record<string, number> | undefined;
+  viewMode: "stacked" | "biggest";
+  showReadiness: boolean;
+  showTarget: boolean;
+  showTrend: boolean;
+  showBodyWeight: boolean;
+}
+
+function SingleCategoryChart({
+  category,
+  movement,
+  categoryStats,
+  readinessByDate,
+  targetHistory,
+  bodyWeightByDate,
+  viewMode,
+  showReadiness,
+  showTarget,
+  showTrend,
+  showBodyWeight,
+}: SingleCategoryChartProps) {
+  const [selectedExercises, setSelectedExercises] = useState<string[]>(() =>
+    EXERCISE_VARIATIONS[category].map((ex) => ex.id)
+  );
+
+  // Reset selected exercises when category changes
+  useEffect(() => {
+    setSelectedExercises(EXERCISE_VARIATIONS[category].map((ex) => ex.id));
+  }, [category]);
+
+  const exerciseOptions = useMemo(() => EXERCISE_VARIATIONS[category], [category]);
+
+  const effectiveSelection = useMemo(() => {
+    if (selectedExercises.length === 0) {
+      return exerciseOptions.map((ex) => ex.id);
+    }
+    return selectedExercises;
+  }, [selectedExercises, exerciseOptions]);
+
+  const selectionSet = useMemo(() => new Set(effectiveSelection), [effectiveSelection]);
+
+  const exerciseSummary = useMemo(() => {
+    if (effectiveSelection.length === exerciseOptions.length) {
+      return "All exercises";
+    }
+    return `${effectiveSelection.length} selected`;
+  }, [effectiveSelection, exerciseOptions]);
+
+  const categoryName = useMemo(
+    () => category.charAt(0).toUpperCase() + category.slice(1),
+    [category]
+  );
+
+  const chartData: ChartRow[] = useMemo(() => {
+    if (!categoryStats) return [];
+
+    let historyIndex = -1;
+    let currentTarget: number | undefined = undefined;
+
+    return categoryStats.dailySets.map((day) => {
+      const history = targetHistory ?? [];
+      while (historyIndex + 1 < history.length && history[historyIndex + 1].date <= day.date) {
+        historyIndex++;
+        currentTarget = history[historyIndex].target;
+      }
+
+      const sets = day.sets
+        .filter((set) => selectionSet.has(set.exercise_variation))
+        .sort((a, b) => a.set_number - b.set_number);
+
+      const totalReps = sets.reduce((sum, set) => sum + set.reps, 0);
+
+      const row: ChartRow = {
+        date: day.date,
+        total: totalReps,
+        readiness: readinessByDate?.[day.date],
+        target: currentTarget,
+        setCount: sets.length,
+        bodyWeight: bodyWeightByDate?.[day.date],
+      };
+
+      sets.forEach((set, idx) => {
+        const index = idx + 1;
+        row[`s${index}_reps`] = set.reps;
+        row[`s${index}_rpe`] = set.rpe;
+        row[`s${index}_max`] = set.is_max_effort;
+      });
+
+      const biggest = sets.reduce<(typeof sets)[number] | null>((best, set) => {
+        if (!best || set.reps > best.reps) return set;
+        return best;
+      }, null);
+
+      row.maxReps = biggest?.reps ?? 0;
+      row.maxRpe = biggest?.rpe ?? 0;
+      row.maxIsMax = biggest?.is_max_effort ?? false;
+
+      return row;
+    });
+  }, [categoryStats, selectionSet, readinessByDate, targetHistory, bodyWeightByDate]);
+
+  const chartDataWithTrend: ChartRow[] = useMemo(() => {
+    if (chartData.length === 0) return [];
+
+    const sourceKey = viewMode === "stacked" ? "total" : "maxReps";
+    const values = chartData.map((row) => {
+      const val = row[sourceKey];
+      return typeof val === "number" && !Number.isNaN(val) ? val : 0;
+    });
+
+    const windowSize = 7;
+    const moving: number[] = [];
+    let rollingSum = 0;
+
+    for (let i = 0; i < values.length; i++) {
+      rollingSum += values[i];
+      if (i >= windowSize) {
+        rollingSum -= values[i - windowSize];
+      }
+      const divisor = Math.min(i + 1, windowSize);
+      moving.push(divisor > 0 ? Number((rollingSum / divisor).toFixed(2)) : 0);
+    }
+
+    return chartData.map((row, idx) => ({
+      ...row,
+      trend: moving[idx],
+    }));
+  }, [chartData, viewMode]);
+
+  const maxSetsForChart = useMemo(() => {
+    if (viewMode !== "stacked") return 0;
+    return chartData.reduce((mx, row) => {
+      const count = typeof row.setCount === "number" ? row.setCount : 0;
+      return Math.max(mx, count);
+    }, 0);
+  }, [chartData, viewMode]);
+
+  const hasChartData = useMemo(
+    () => chartData.some((row) => row.total > 0 || (row.maxReps ?? 0) > 0),
+    [chartData]
+  );
+
+  const hasReadinessLine =
+    showReadiness && chartDataWithTrend.some((row) => typeof row.readiness === "number");
+  const hasBodyWeightLine =
+    showBodyWeight && chartDataWithTrend.some((row) => typeof row.bodyWeight === "number");
+  const showTargetLine = showTarget && movement && targetHistory && targetHistory.length > 0;
+
+  interface CustomTooltipProps {
+    active?: boolean;
+    payload?: Array<{ payload: ChartRow }>;
+    label?: string | number;
+  }
+
+  const CustomTooltip = ({ active, label, payload }: CustomTooltipProps) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const data = (payload[0]?.payload as ChartRow) || ({} as ChartRow);
+    const dateLabel = label ? new Date(String(label)).toLocaleDateString() : "";
+
+    const stackedSets: Array<{ reps: number; rpe: number; isMax: boolean }> = [];
+    if (viewMode === "stacked") {
+      for (let i = 1; i <= maxSetsForChart; i++) {
+        const reps = data[`s${i}_reps`] as number | undefined;
+        if (typeof reps !== "number") continue;
+        const rpe = data[`s${i}_rpe`] as number | undefined;
+        const isMax = data[`s${i}_max`] as boolean | undefined;
+        stackedSets.push({
+          reps,
+          rpe: typeof rpe === "number" ? rpe : 0,
+          isMax: !!isMax,
+        });
+      }
+    }
+
+    return (
+      <div className="rounded-md border bg-card p-3 shadow-sm">
+        <div className="mb-2 text-xs text-muted-foreground">{dateLabel}</div>
+        {viewMode === "stacked" ? (
+          <>
+            <div className="text-sm font-medium">Total: {data.total} reps</div>
+            <div className="mt-2 space-y-1">
+              {stackedSets.map((set, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-sm">
+                  <span
+                    className="inline-block h-3 w-3 rounded"
+                    style={{ backgroundColor: colorForRPE(set.rpe, set.isMax) }}
+                  />
+                  <span>
+                    Set {idx + 1}: {set.reps} reps
+                  </span>
+                  <span className="text-xs text-muted-foreground">RPE {set.rpe}</span>
+                  {set.isMax && (
+                    <span className="ml-1 rounded bg-purple-100 px-1.5 py-0.5 text-xs text-purple-600 dark:bg-purple-900/30 dark:text-purple-200">
+                      Max effort
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="space-y-1 text-sm">
+            <div className="font-medium">Biggest set: {data.maxReps ?? 0} reps</div>
+            <div className="text-xs text-muted-foreground">RPE {data.maxRpe ?? 0}</div>
+            {data.maxIsMax && (
+              <div className="text-xs text-purple-600 dark:text-purple-300">Max effort set</div>
+            )}
+          </div>
+        )}
+        {hasReadinessLine && typeof data.readiness === "number" && (
+          <div className="mt-2 text-xs text-muted-foreground">Readiness: {data.readiness}</div>
+        )}
+        {hasBodyWeightLine && typeof data.bodyWeight === "number" && (
+          <div className="mt-2 text-xs text-muted-foreground">
+            Body weight: {data.bodyWeight.toFixed(1)} kg
+          </div>
+        )}
+        {showTrend && typeof data.trend === "number" && (
+          <div className="text-xs text-muted-foreground">
+            7-day trend: {data.trend.toFixed(1)} reps
+          </div>
+        )}
+        {showTargetLine && typeof data.target === "number" && (
+          <div className="text-xs text-muted-foreground">Target: {data.target} reps</div>
+        )}
+      </div>
+    );
+  };
+
+  const CustomLegend = () => (
+    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+      {RPE_LEGEND.map((item) => (
+        <div key={item.label} className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded" style={{ backgroundColor: item.color }} />
+          <span className="text-muted-foreground">{item.label}</span>
+        </div>
+      ))}
+      {hasReadinessLine && (
+        <div className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-3 w-3 rounded"
+            style={{ backgroundColor: "hsl(var(--primary))" }}
+          />
+          <span className="text-muted-foreground">Readiness (1–5)</span>
+        </div>
+      )}
+      {hasBodyWeightLine && (
+        <div className="flex items-center gap-1.5">
+          <span
+            className="inline-block h-3 w-3 rounded"
+            style={{ backgroundColor: "hsl(var(--primary))" }}
+          />
+          <span className="text-muted-foreground">Body weight (kg)</span>
+        </div>
+      )}
+      {showTargetLine && (
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4 rounded bg-muted-foreground" />
+          <span className="text-muted-foreground">Target volume</span>
+        </div>
+      )}
+      {showTrend && (
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4 rounded bg-sky-500 dark:bg-sky-400" />
+          <span className="text-muted-foreground">7-day trend</span>
+        </div>
+      )}
+    </div>
+  );
+
+  // Calculate Y-axis domain for body weight
+  const bodyWeightDomain = useMemo(() => {
+    if (!hasBodyWeightLine) return [0, 100];
+    const weights = chartDataWithTrend
+      .map((row) => row.bodyWeight)
+      .filter((w): w is number => typeof w === "number");
+    if (weights.length === 0) return [0, 100];
+    const min = Math.min(...weights);
+    const max = Math.max(...weights);
+    return [Math.floor(min - 2), Math.ceil(max + 2)];
+  }, [chartDataWithTrend, hasBodyWeightLine]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>{categoryName} Training Load</CardTitle>
+            <CardDescription>
+              {viewMode === "stacked"
+                ? "Stacked daily sets with optional overlays."
+                : "Biggest set per day with optional overlays."}
+            </CardDescription>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <ListFilter className="h-4 w-4" />
+                <span>{exerciseSummary}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              {exerciseOptions.map((option) => {
+                const checked = effectiveSelection.includes(option.id);
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={option.id}
+                    checked={checked}
+                    onCheckedChange={(next) => {
+                      setSelectedExercises((prev) => {
+                        const isChecked = Boolean(next);
+                        if (isChecked) {
+                          const set = new Set(prev);
+                          set.add(option.id);
+                          return Array.from(set);
+                        }
+                        const filtered = prev.filter((id) => id !== option.id);
+                        if (filtered.length === 0) {
+                          return exerciseOptions.map((ex) => ex.id);
+                        }
+                        return filtered;
+                      });
+                    }}
+                  >
+                    {option.name}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!hasChartData ? (
+          <div className="text-sm text-muted-foreground">
+            No training data yet for this selection.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartDataWithTrend} barCategoryGap={16} barGap={4}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="date"
+                tickFormatter={(value) =>
+                  new Date(value).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+                }
+              />
+              <YAxis yAxisId="left" allowDecimals={false} />
+              {(hasReadinessLine || hasBodyWeightLine) && (
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  domain={hasBodyWeightLine ? bodyWeightDomain : [1, 5]}
+                  allowDecimals={false}
+                  tickFormatter={hasBodyWeightLine ? (value) => `${value} kg` : undefined}
+                />
+              )}
+              <Tooltip content={<CustomTooltip />} />
+              <Legend content={<CustomLegend />} />
+
+              {viewMode === "stacked" && maxSetsForChart > 0 ? (
+                Array.from({ length: maxSetsForChart }).map((_, idx) => {
+                  const key = `s${idx + 1}_reps`;
+                  return (
+                    <Bar
+                      key={key}
+                      yAxisId="left"
+                      dataKey={key}
+                      stackId="sets"
+                      radius={idx === maxSetsForChart - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                    >
+                      {chartDataWithTrend.map((entry, index) => (
+                        <Cell
+                          key={`${key}-${index}`}
+                          fill={colorForRPE(
+                            entry[`s${idx + 1}_rpe`] as number | undefined,
+                            entry[`s${idx + 1}_max`] as boolean | undefined
+                          )}
+                          stroke="hsl(var(--card))"
+                          strokeWidth={1}
+                        />
+                      ))}
+                    </Bar>
+                  );
+                })
+              ) : (
+                <Bar yAxisId="left" dataKey="maxReps" radius={[4, 4, 0, 0]}>
+                  {chartDataWithTrend.map((entry, index) => (
+                    <Cell
+                      key={`max-${index}`}
+                      fill={colorForRPE(entry.maxRpe ?? 0, entry.maxIsMax ?? false)}
+                      stroke="hsl(var(--card))"
+                      strokeWidth={1}
+                    />
+                  ))}
+                </Bar>
+              )}
+
+              {hasReadinessLine && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="readiness"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Readiness"
+                />
+              )}
+              {hasBodyWeightLine && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="bodyWeight"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  dot={{ fill: "hsl(var(--primary))", r: 3 }}
+                  name="Body Weight"
+                />
+              )}
+              {showTargetLine && (
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="target"
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeDasharray="4 4"
+                  strokeWidth={1.5}
+                  dot={false}
+                  name="Target"
+                />
+              )}
+              {showTrend && (
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="trend"
+                  stroke="#0ea5e9"
+                  strokeWidth={2}
+                  dot={false}
+                  name="7-day trend"
+                />
+              )}
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export function StatsContent({ userId }: StatsContentProps) {
@@ -71,19 +545,37 @@ export function StatsContent({ userId }: StatsContentProps) {
   const [showTarget, setShowTarget] = useState(true);
   const [showTrend, setShowTrend] = useState(true);
   const [showBodyWeight, setShowBodyWeight] = useState(false);
-  const [bodyWeightData, setBodyWeightData] = useState<BodyWeight[]>([]);
-  const [selectedExercises, setSelectedExercises] = useState<string[]>(() =>
-    EXERCISE_VARIATIONS["push"].map((ex) => ex.id)
-  );
+  const isDesktop = useIsDesktop();
+
+  // Handle mutually exclusive readiness/body weight toggles
+  const handleReadinessToggle = (checked: boolean) => {
+    if (checked) {
+      setShowBodyWeight(false);
+    }
+    setShowReadiness(checked);
+  };
+
+  const handleBodyWeightToggle = (checked: boolean) => {
+    if (checked) {
+      setShowReadiness(false);
+    }
+    setShowBodyWeight(checked);
+  };
 
   const processStats = (
     sets: WorkoutSet[],
     readiness: Array<{ date: string; score: number }>,
-    targets: Array<{ category: MovementCategory; date: string; target: number }>
+    targets: Array<{ category: MovementCategory; date: string; target: number }>,
+    bodyWeight: BodyWeight[]
   ): StatsData => {
     const readinessByDate: Record<string, number> = {};
     readiness.forEach((r) => {
       readinessByDate[r.date] = r.score;
+    });
+
+    const bodyWeightByDate: Record<string, number> = {};
+    bodyWeight.forEach((bw) => {
+      bodyWeightByDate[bw.date] = bw.weight_kg;
     });
 
     const statsByCategory: Record<
@@ -192,6 +684,7 @@ export function StatsContent({ userId }: StatsContentProps) {
       byCategory: statsByCategory,
       readinessByDate,
       targetsByCategory,
+      bodyWeightByDate,
     };
   };
 
@@ -237,12 +730,12 @@ export function StatsContent({ userId }: StatsContentProps) {
       ]);
 
       setMovements(movementsData || []);
-      setBodyWeightData(bodyWeight || []);
 
       const statsData = processStats(
         sets || [],
         readiness || [],
-        (targets || []) as Array<{ category: MovementCategory; date: string; target: number }>
+        (targets || []) as Array<{ category: MovementCategory; date: string; target: number }>,
+        bodyWeight || []
       );
       setStats(statsData);
     } catch (error) {
@@ -256,142 +749,6 @@ export function StatsContent({ userId }: StatsContentProps) {
     loadStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
-
-  useEffect(() => {
-    setSelectedExercises(EXERCISE_VARIATIONS[category].map((ex) => ex.id));
-  }, [category]);
-
-  const exerciseOptions = useMemo(() => EXERCISE_VARIATIONS[category], [category]);
-
-  const effectiveSelection = useMemo(() => {
-    if (selectedExercises.length === 0) {
-      return exerciseOptions.map((ex) => ex.id);
-    }
-    return selectedExercises;
-  }, [selectedExercises, exerciseOptions]);
-
-  const selectionSet = useMemo(() => new Set(effectiveSelection), [effectiveSelection]);
-
-  const exerciseSummary = useMemo(() => {
-    if (effectiveSelection.length === exerciseOptions.length) {
-      return "All exercises";
-    }
-    return `${effectiveSelection.length} selected`;
-  }, [effectiveSelection, exerciseOptions]);
-
-  const categoryName = useMemo(
-    () => category.charAt(0).toUpperCase() + category.slice(1),
-    [category]
-  );
-
-  const movement = useMemo(
-    () => movements.find((m) => m.category === category) || null,
-    [movements, category]
-  );
-
-  const categoryStats = stats?.byCategory[category];
-  const readinessByDate = stats?.readinessByDate;
-  const targetHistory = stats?.targetsByCategory?.[category];
-
-  type ChartRow = {
-    date: string;
-    total: number;
-    readiness?: number;
-    target?: number;
-    maxReps?: number;
-    maxRpe?: number;
-    maxIsMax?: boolean;
-    setCount?: number;
-    trend?: number;
-  } & Record<string, number | boolean | string | undefined>;
-
-  const chartData: ChartRow[] = useMemo(() => {
-    if (!categoryStats) return [];
-
-    let historyIndex = -1;
-    let currentTarget: number | undefined = undefined;
-
-    return categoryStats.dailySets.map((day) => {
-      const history = targetHistory ?? [];
-      while (historyIndex + 1 < history.length && history[historyIndex + 1].date <= day.date) {
-        historyIndex++;
-        currentTarget = history[historyIndex].target;
-      }
-
-      const sets = day.sets
-        .filter((set) => selectionSet.has(set.exercise_variation))
-        .sort((a, b) => a.set_number - b.set_number);
-
-      const totalReps = sets.reduce((sum, set) => sum + set.reps, 0);
-
-      const row: ChartRow = {
-        date: day.date,
-        total: totalReps,
-        readiness: readinessByDate?.[day.date],
-        target: currentTarget,
-        setCount: sets.length,
-      };
-
-      sets.forEach((set, idx) => {
-        const index = idx + 1;
-        row[`s${index}_reps`] = set.reps;
-        row[`s${index}_rpe`] = set.rpe;
-        row[`s${index}_max`] = set.is_max_effort;
-      });
-
-      const biggest = sets.reduce<(typeof sets)[number] | null>((best, set) => {
-        if (!best || set.reps > best.reps) return set;
-        return best;
-      }, null);
-
-      row.maxReps = biggest?.reps ?? 0;
-      row.maxRpe = biggest?.rpe ?? 0;
-      row.maxIsMax = biggest?.is_max_effort ?? false;
-
-      return row;
-    });
-  }, [categoryStats, selectionSet, readinessByDate, targetHistory]);
-
-  const chartDataWithTrend: ChartRow[] = useMemo(() => {
-    if (chartData.length === 0) return [];
-
-    const sourceKey = viewMode === "stacked" ? "total" : "maxReps";
-    const values = chartData.map((row) => {
-      const val = row[sourceKey];
-      return typeof val === "number" && !Number.isNaN(val) ? val : 0;
-    });
-
-    const windowSize = 7;
-    const moving: number[] = [];
-    let rollingSum = 0;
-
-    for (let i = 0; i < values.length; i++) {
-      rollingSum += values[i];
-      if (i >= windowSize) {
-        rollingSum -= values[i - windowSize];
-      }
-      const divisor = Math.min(i + 1, windowSize);
-      moving.push(divisor > 0 ? Number((rollingSum / divisor).toFixed(2)) : 0);
-    }
-
-    return chartData.map((row, idx) => ({
-      ...row,
-      trend: moving[idx],
-    }));
-  }, [chartData, viewMode]);
-
-  const maxSetsForChart = useMemo(() => {
-    if (viewMode !== "stacked") return 0;
-    return chartData.reduce((mx, row) => {
-      const count = typeof row.setCount === "number" ? row.setCount : 0;
-      return Math.max(mx, count);
-    }, 0);
-  }, [chartData, viewMode]);
-
-  const hasChartData = useMemo(
-    () => chartData.some((row) => row.total > 0 || (row.maxReps ?? 0) > 0),
-    [chartData]
-  );
 
   if (loading) {
     return (
@@ -407,7 +764,6 @@ export function StatsContent({ userId }: StatsContentProps) {
           <div className="flex flex-wrap items-center gap-3">
             <div className="h-10 w-24 animate-pulse rounded-md bg-muted"></div>
             <div className="h-10 w-32 animate-pulse rounded-md bg-muted"></div>
-            <div className="h-10 w-40 animate-pulse rounded-md bg-muted"></div>
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <div className="h-5 w-32 animate-pulse rounded bg-muted"></div>
@@ -416,23 +772,25 @@ export function StatsContent({ userId }: StatsContentProps) {
           </div>
         </div>
 
-        {/* Main chart skeleton */}
-        <Card>
-          <CardHeader>
-            <div className="h-7 w-48 animate-pulse rounded bg-muted"></div>
-            <div className="mt-2 h-4 w-96 animate-pulse rounded bg-muted"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[360px] w-full animate-pulse rounded bg-muted"></div>
-          </CardContent>
-        </Card>
+        {/* Chart skeletons */}
+        <div className={isDesktop ? "grid gap-4 md:grid-cols-3" : ""}>
+          {(isDesktop ? [1, 2, 3] : [1]).map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="h-7 w-48 animate-pulse rounded bg-muted"></div>
+                <div className="mt-2 h-4 w-96 animate-pulse rounded bg-muted"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] w-full animate-pulse rounded bg-muted"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
-  const hasReadinessLine =
-    showReadiness && chartDataWithTrend.some((row) => typeof row.readiness === "number");
-  const showTargetLine = showTarget && movement && targetHistory && targetHistory.length > 0;
+  const categories: MovementCategory[] = ["push", "pull", "legs"];
 
   return (
     <div className="space-y-6">
@@ -441,22 +799,27 @@ export function StatsContent({ userId }: StatsContentProps) {
         <p className="text-muted-foreground">Track your calisthenics journey</p>
       </div>
 
+      {/* Synchronized Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Select
-            value={category}
-            onValueChange={(value) => setCategory(value as MovementCategory)}
-          >
-            <SelectTrigger size="sm">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="push">Push</SelectItem>
-              <SelectItem value="pull">Pull</SelectItem>
-              <SelectItem value="legs">Legs</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Mobile: Category selector */}
+          {!isDesktop && (
+            <Select
+              value={category}
+              onValueChange={(value) => setCategory(value as MovementCategory)}
+            >
+              <SelectTrigger size="sm">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="push">Push</SelectItem>
+                <SelectItem value="pull">Pull</SelectItem>
+                <SelectItem value="legs">Legs</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
 
+          {/* View Mode selector */}
           <Select
             value={viewMode}
             onValueChange={(value) => setViewMode(value as "stacked" | "biggest")}
@@ -469,50 +832,14 @@ export function StatsContent({ userId }: StatsContentProps) {
               <SelectItem value="biggest">Biggest set</SelectItem>
             </SelectContent>
           </Select>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <ListFilter className="h-4 w-4" />
-                <span>{exerciseSummary}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-60">
-              {exerciseOptions.map((option) => {
-                const checked = effectiveSelection.includes(option.id);
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={option.id}
-                    checked={checked}
-                    onCheckedChange={(next) => {
-                      setSelectedExercises((prev) => {
-                        const isChecked = Boolean(next);
-                        if (isChecked) {
-                          const set = new Set(prev);
-                          set.add(option.id);
-                          return Array.from(set);
-                        }
-                        const filtered = prev.filter((id) => id !== option.id);
-                        if (filtered.length === 0) {
-                          return exerciseOptions.map((ex) => ex.id);
-                        }
-                        return filtered;
-                      });
-                    }}
-                  >
-                    {option.name}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
+        {/* Synchronized Toggles */}
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <Checkbox
               checked={showReadiness}
-              onCheckedChange={(checked) => setShowReadiness(Boolean(checked))}
+              onCheckedChange={(checked) => handleReadinessToggle(Boolean(checked))}
             />
             Readiness line
           </label>
@@ -533,328 +860,52 @@ export function StatsContent({ userId }: StatsContentProps) {
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <Checkbox
               checked={showBodyWeight}
-              onCheckedChange={(checked) => setShowBodyWeight(Boolean(checked))}
+              onCheckedChange={(checked) => handleBodyWeightToggle(Boolean(checked))}
             />
-            Show body weight
+            Body weight line
           </label>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{categoryName} Training Load</CardTitle>
-          <CardDescription>
-            {viewMode === "stacked"
-              ? "Stacked daily sets with optional readiness overlay."
-              : "Biggest set per day with optional readiness overlay."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!hasChartData ? (
-            <div className="text-sm text-muted-foreground">
-              No training data yet for this selection.
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={360}>
-              {(() => {
-                interface CustomTooltipProps {
-                  active?: boolean;
-                  payload?: Array<{ payload: ChartRow }>;
-                  label?: string | number;
-                }
-
-                const CustomTooltip = ({ active, label, payload }: CustomTooltipProps) => {
-                  if (!active || !payload || payload.length === 0) return null;
-                  const data = (payload[0]?.payload as ChartRow) || ({} as ChartRow);
-                  const dateLabel = label ? new Date(String(label)).toLocaleDateString() : "";
-
-                  const stackedSets: Array<{ reps: number; rpe: number; isMax: boolean }> = [];
-                  if (viewMode === "stacked") {
-                    for (let i = 1; i <= maxSetsForChart; i++) {
-                      const reps = data[`s${i}_reps`] as number | undefined;
-                      if (typeof reps !== "number") continue;
-                      const rpe = data[`s${i}_rpe`] as number | undefined;
-                      const isMax = data[`s${i}_max`] as boolean | undefined;
-                      stackedSets.push({
-                        reps,
-                        rpe: typeof rpe === "number" ? rpe : 0,
-                        isMax: !!isMax,
-                      });
-                    }
-                  }
-
-                  return (
-                    <div className="rounded-md border bg-card p-3 shadow-sm">
-                      <div className="mb-2 text-xs text-muted-foreground">{dateLabel}</div>
-                      {viewMode === "stacked" ? (
-                        <>
-                          <div className="text-sm font-medium">Total: {data.total} reps</div>
-                          <div className="mt-2 space-y-1">
-                            {stackedSets.map((set, idx) => (
-                              <div key={idx} className="flex items-center gap-2 text-sm">
-                                <span
-                                  className="inline-block h-3 w-3 rounded"
-                                  style={{ backgroundColor: colorForRPE(set.rpe, set.isMax) }}
-                                />
-                                <span>
-                                  Set {idx + 1}: {set.reps} reps
-                                </span>
-                                <span className="text-xs text-muted-foreground">RPE {set.rpe}</span>
-                                {set.isMax && (
-                                  <span className="ml-1 rounded bg-purple-100 px-1.5 py-0.5 text-xs text-purple-600 dark:bg-purple-900/30 dark:text-purple-200">
-                                    Max effort
-                                  </span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="space-y-1 text-sm">
-                          <div className="font-medium">Biggest set: {data.maxReps ?? 0} reps</div>
-                          <div className="text-xs text-muted-foreground">
-                            RPE {data.maxRpe ?? 0}
-                          </div>
-                          {data.maxIsMax && (
-                            <div className="text-xs text-purple-600 dark:text-purple-300">
-                              Max effort set
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {hasReadinessLine && typeof data.readiness === "number" && (
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Readiness: {data.readiness}
-                        </div>
-                      )}
-                      {showTrend && typeof data.trend === "number" && (
-                        <div className="text-xs text-muted-foreground">
-                          7-day trend: {data.trend.toFixed(1)} reps
-                        </div>
-                      )}
-                      {showTargetLine && typeof data.target === "number" && (
-                        <div className="text-xs text-muted-foreground">
-                          Target: {data.target} reps
-                        </div>
-                      )}
-                    </div>
-                  );
-                };
-
-                const CustomLegend = () => (
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-                    {RPE_LEGEND.map((item) => (
-                      <div key={item.label} className="flex items-center gap-1.5">
-                        <span
-                          className="inline-block h-3 w-3 rounded"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="text-muted-foreground">{item.label}</span>
-                      </div>
-                    ))}
-                    {hasReadinessLine && (
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className="inline-block h-3 w-3 rounded"
-                          style={{ backgroundColor: "hsl(var(--primary))" }}
-                        />
-                        <span className="text-muted-foreground">Readiness (1–5)</span>
-                      </div>
-                    )}
-                    {showTargetLine && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="inline-block h-0.5 w-4 rounded bg-muted-foreground" />
-                        <span className="text-muted-foreground">Target volume</span>
-                      </div>
-                    )}
-                    {showTrend && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="inline-block h-0.5 w-4 rounded bg-sky-500 dark:bg-sky-400" />
-                        <span className="text-muted-foreground">7-day trend</span>
-                      </div>
-                    )}
-                  </div>
-                );
-
-                return (
-                  <BarChart data={chartDataWithTrend} barCategoryGap={16} barGap={4}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={(value) =>
-                        new Date(value).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      }
-                    />
-                    <YAxis yAxisId="left" allowDecimals={false} />
-                    {hasReadinessLine && (
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        domain={[1, 5]}
-                        allowDecimals={false}
-                      />
-                    )}
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend content={<CustomLegend />} />
-
-                    {viewMode === "stacked" && maxSetsForChart > 0 ? (
-                      Array.from({ length: maxSetsForChart }).map((_, idx) => {
-                        const key = `s${idx + 1}_reps`;
-                        return (
-                          <Bar
-                            key={key}
-                            yAxisId="left"
-                            dataKey={key}
-                            stackId="sets"
-                            radius={idx === maxSetsForChart - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                          >
-                            {chartDataWithTrend.map((entry, index) => (
-                              <Cell
-                                key={`${key}-${index}`}
-                                fill={colorForRPE(
-                                  entry[`s${idx + 1}_rpe`] as number | undefined,
-                                  entry[`s${idx + 1}_max`] as boolean | undefined
-                                )}
-                                stroke="hsl(var(--card))"
-                                strokeWidth={1}
-                              />
-                            ))}
-                          </Bar>
-                        );
-                      })
-                    ) : (
-                      <Bar yAxisId="left" dataKey="maxReps" radius={[4, 4, 0, 0]}>
-                        {chartDataWithTrend.map((entry, index) => (
-                          <Cell
-                            key={`max-${index}`}
-                            fill={colorForRPE(entry.maxRpe ?? 0, entry.maxIsMax ?? false)}
-                            stroke="hsl(var(--card))"
-                            strokeWidth={1}
-                          />
-                        ))}
-                      </Bar>
-                    )}
-
-                    {hasReadinessLine && (
-                      <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="readiness"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                        dot={false}
-                        name="Readiness"
-                      />
-                    )}
-                    {showTargetLine && (
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="target"
-                        stroke="hsl(var(--muted-foreground))"
-                        strokeDasharray="4 4"
-                        strokeWidth={1.5}
-                        dot={false}
-                        name="Target"
-                      />
-                    )}
-                    {showTrend && (
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="trend"
-                        stroke="#0ea5e9"
-                        strokeWidth={2}
-                        dot={false}
-                        name="7-day trend"
-                      />
-                    )}
-                  </BarChart>
-                );
-              })()}
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      {!movement && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="mb-4 text-sm text-muted-foreground">
-              No movement configured for {categoryName} yet.
-            </p>
-            <Button onClick={() => (window.location.href = `/movement/${category}/select`)}>
-              Set Up Movement
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {showBodyWeight && bodyWeightData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Body Weight Progression</CardTitle>
-            <CardDescription>Track your body weight over time (kg)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={bodyWeightData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(value) =>
-                    new Date(value).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }
-                />
-                <YAxis
-                  domain={[
-                    (dataMin: number) => Math.floor(dataMin - 2),
-                    (dataMax: number) => Math.ceil(dataMax + 2),
-                  ]}
-                  tickFormatter={(value) => `${value} kg`}
-                />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload || payload.length === 0) return null;
-                    const data = payload[0].payload as BodyWeight;
-                    return (
-                      <div className="rounded-md border bg-card p-3 shadow-sm">
-                        <div className="mb-1 text-xs text-muted-foreground">
-                          {new Date(data.date).toLocaleDateString()}
-                        </div>
-                        <div className="text-sm font-medium">{data.weight_kg.toFixed(1)} kg</div>
-                      </div>
-                    );
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="weight_kg"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ fill: "hsl(var(--primary))", r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
-
-      {showBodyWeight && bodyWeightData.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-sm text-muted-foreground">
-              No body weight data logged yet. Start tracking in your daily check-in!
-            </p>
-          </CardContent>
-        </Card>
+      {/* Charts */}
+      {isDesktop ? (
+        // Desktop: 3 charts side by side
+        <div className="grid gap-4 md:grid-cols-3">
+          {categories.map((cat) => {
+            const movement = movements.find((m) => m.category === cat) || null;
+            return (
+              <SingleCategoryChart
+                key={cat}
+                category={cat}
+                movement={movement}
+                categoryStats={stats?.byCategory[cat]}
+                readinessByDate={stats?.readinessByDate}
+                targetHistory={stats?.targetsByCategory[cat]}
+                bodyWeightByDate={stats?.bodyWeightByDate}
+                viewMode={viewMode}
+                showReadiness={showReadiness}
+                showTarget={showTarget}
+                showTrend={showTrend}
+                showBodyWeight={showBodyWeight}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        // Mobile: Single chart with category selector
+        <SingleCategoryChart
+          category={category}
+          movement={movements.find((m) => m.category === category) || null}
+          categoryStats={stats?.byCategory[category]}
+          readinessByDate={stats?.readinessByDate}
+          targetHistory={stats?.targetsByCategory[category]}
+          bodyWeightByDate={stats?.bodyWeightByDate}
+          viewMode={viewMode}
+          showReadiness={showReadiness}
+          showTarget={showTarget}
+          showTrend={showTrend}
+          showBodyWeight={showBodyWeight}
+        />
       )}
     </div>
   );

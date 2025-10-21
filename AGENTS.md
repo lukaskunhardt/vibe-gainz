@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 - Standard workflow includes fetching an issue, which you then attempt to solve. Often the issues are not detailed enough for you to implement them directly, ask the user detailed follow up questions on how to implement this issue
-- Fetch GitHub issues reliably with: `gh issue view <num> --repo lukaskunhardt/vibe-gainz --json number,title,state,body,url` (avoids deprecated Projects Classic fields).
+- Fetch GitHub issues reliably with: `gh issue view <num> --repo lukaskunhardt/vibe-gainz --json number,title,state,body,url` (avoids deprecated Projects Classic fields). Always use `required_permissions: ["all"]` when running this command to avoid TLS certificate errors.
 
 Delete unused or obsolete files when your changes make them irrelevant (refactors, feature removals, etc.), and revert files only when the change is yours or explicitly requested. If a git operation leaves you unsure about other agents' in-flight work, stop and coordinate instead of deleting.
 Before attempting to delete a file to resolve a local type/lint failure, stop and ask the user. Other agents are often editing adjacent files; deleting their work to silence an error is never acceptable without explicit approval.
