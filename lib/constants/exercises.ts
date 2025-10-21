@@ -96,6 +96,7 @@ export const FORM_CUES: Record<string, FormCues> = {
     gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbKJ8t7ZXdPBlcTFmYA23bzasuJftN4ovRW6VO",
   },
   "weighted-pushups": {
+    //Todo: include additional weight logging in database. (maybe in combination with bodyweight? so that we can chart basically weight moved over time in addition with volume)
     cues: [
       "Place weight vest or plate on back",
       "Maintain strict form as regular push-ups",
@@ -154,6 +155,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Full dead hang at bottom",
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_JUMPING_PULLUP",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbjYFf6HPPwVgza0DFUiObCSYXJym1G5LKxqW3",
   },
   "band-assisted-pullups": {
     cues: [
