@@ -379,10 +379,12 @@ export function RecordingContent({
         setTimeout(() => router.push("/dashboard"), 1500);
         return; // Exit early
       } else if (newTotal >= targetToCheck) {
-        // Reload data to show the completion animation
+        // Small delay to ensure DB transaction completes, then reload data
+        await new Promise((resolve) => setTimeout(resolve, 100));
         await loadData();
         toast.success("🎉 Daily target reached! Great work!");
-        setTimeout(() => router.push("/dashboard"), 2000);
+        // Wait longer to allow animation to play (animation is 800ms + extra time to see it)
+        setTimeout(() => router.push("/dashboard"), 2500);
         return; // Exit early
       }
 
