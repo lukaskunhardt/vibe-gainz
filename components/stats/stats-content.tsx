@@ -445,7 +445,7 @@ function SingleCategoryChart({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartDataWithTrend} barCategoryGap={16} barGap={4}>
+            <BarChart data={chartDataWithTrend} barCategoryGap="10%" barGap={2}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="date"
