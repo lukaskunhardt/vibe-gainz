@@ -48,7 +48,8 @@ export function RecordingContent({
   const [todaySets, setTodaySets] = useState<WorkoutSet[]>([]);
   const [reps, setReps] = useState(0);
   const [rpe, setRPE] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Initial page load only
+  const [isRefreshing, setIsRefreshing] = useState(false); // Post-action data refresh
   const [saving, setSaving] = useState(false);
   const [showRPE10Modal, setShowRPE10Modal] = useState(false);
   const [lastBestSet, setLastBestSet] = useState<number>(0);
@@ -72,12 +73,16 @@ export function RecordingContent({
   };
 
   useEffect(() => {
-    loadData();
+    loadData(true); // Initial load with skeleton
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, category]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (isInitialLoad = false) => {
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
     try {
       const supabase = createClient();
       const today = new Date();
@@ -185,7 +190,11 @@ export function RecordingContent({
       console.error("Error loading data:", error);
       toast.error("Failed to load data");
     } finally {
-      setLoading(false);
+      if (isInitialLoad) {
+        setLoading(false);
+      } else {
+        setIsRefreshing(false);
+      }
     }
   };
 
@@ -234,7 +243,7 @@ export function RecordingContent({
       toast.success(`Exercise changed to ${exerciseName}`);
 
       setShowExerciseSheet(false);
-      await loadData();
+      await loadData(false); // Refresh without showing skeleton
     } catch (error) {
       console.error("Error updating exercise:", error);
       toast.error("Failed to update exercise. Please try again.");
@@ -381,7 +390,7 @@ export function RecordingContent({
       } else if (newTotal >= targetToCheck) {
         // Small delay to ensure DB transaction completes, then reload data
         await new Promise((resolve) => setTimeout(resolve, 100));
-        await loadData();
+        await loadData(false); // Refresh without skeleton to show animation
         toast.success("🎉 Daily target reached! Great work!");
         // Wait longer to allow animation to play (animation is 800ms + extra time to see it)
         setTimeout(() => router.push("/dashboard"), 2500);
@@ -389,7 +398,7 @@ export function RecordingContent({
       }
 
       // Reload data (which will set the next planned set reps)
-      await loadData();
+      await loadData(false); // Refresh without skeleton
 
       // Reset RPE for the next set
       setRPE(0);
@@ -494,7 +503,7 @@ export function RecordingContent({
         </Link>
       </div>
 
-      <Card>
+      <Card className={isRefreshing ? "opacity-90 transition-opacity" : ""}>
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center gap-2 text-2xl">
             {isMaxEffort && <Trophy className="h-6 w-6 text-yellow-500" />}
@@ -565,7 +574,7 @@ export function RecordingContent({
           {/* Save Button */}
           <Button
             onClick={handleLogSet}
-            disabled={saving || reps <= 0 || (!isMaxEffort && rpe === 0)}
+            disabled={saving || isRefreshing || reps <= 0 || (!isMaxEffort && rpe === 0)}
             className="w-full"
             size="lg"
           >
