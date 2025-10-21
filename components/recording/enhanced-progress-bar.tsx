@@ -73,17 +73,22 @@ export function EnhancedProgressBar({
     return { startPercentage, width, color, set, index };
   });
 
+  // Create planned sets description
+  const plannedSetsDescription =
+    plannedSets.length > 0
+      ? `Planned: ${plannedSets.map((reps, i) => `${reps} reps${i < plannedSets.length - 1 ? ", " : ""}`).join("")}`
+      : "";
+
   return (
     <div className="space-y-3">
-      {/* Label */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-bold">Today&apos;s Progress</span>
-        <span className="text-sm font-semibold text-muted-foreground">
-          {currentTotal} / {totalTarget} reps
-          {overflowReps > 0 && (
-            <span className="ml-1 font-black text-primary">(+{overflowReps})</span>
-          )}
-        </span>
+      {/* Label with description */}
+      <div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold">Today&apos;s Progress</span>
+        </div>
+        {plannedSetsDescription && (
+          <p className="mt-1 text-xs text-muted-foreground">{plannedSetsDescription}</p>
+        )}
       </div>
 
       {/* Enhanced Progress Bar */}
@@ -93,14 +98,15 @@ export function EnhancedProgressBar({
           {/* Completed set labels */}
           {completedSegments.map((segment) => {
             const actualCenter = segment.startPercentage + segment.width / 2;
-            if (actualCenter > 100) return null;
+            // Cap at 98% to keep label visible even with overflow
+            const displayCenter = Math.min(actualCenter, 98);
 
             return (
               <div
                 key={`label-completed-${segment.index}`}
                 className="absolute"
                 style={{
-                  left: `${actualCenter}%`,
+                  left: `${displayCenter}%`,
                 }}
               >
                 <div className="relative flex -translate-x-1/2 flex-col items-center">
@@ -237,16 +243,14 @@ export function EnhancedProgressBar({
           )}
         </div>
 
-        {/* Planned sets info below the bar */}
-        <div className="mt-2 text-xs font-semibold text-muted-foreground">
-          {plannedSets.length > 0 && (
-            <p>
-              Planned:{" "}
-              {plannedSets.map(
-                (reps, i) => `${reps} reps${i < plannedSets.length - 1 ? ", " : ""}`
-              )}
-            </p>
-          )}
+        {/* Total volume counter below bar (right side) */}
+        <div className="mt-2 flex justify-end">
+          <span className="text-xs font-semibold text-muted-foreground">
+            {currentTotal} / {totalTarget} reps
+            {overflowReps > 0 && (
+              <span className="ml-1 font-black text-primary">(+{overflowReps})</span>
+            )}
+          </span>
         </div>
       </div>
     </div>
