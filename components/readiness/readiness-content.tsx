@@ -1,21 +1,122 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Info, TrendingUp, BookOpen } from "lucide-react";
+import { Info, TrendingUp, BookOpen, ArrowRight } from "lucide-react";
+import { Movement, MovementCategory, Set as WorkoutSet } from "@/types";
+import { suggestDailyTargetDelta, isCapRelaxed } from "@/lib/utils/recovery-daily";
+import { format, startOfDay, endOfDay, subDays } from "date-fns";
 
 interface ReadinessContentProps {
   userId: string;
   date: string; // YYYY-MM-DD
 }
 
+interface CategoryPreview {
+  category: MovementCategory;
+  currentTarget: number;
+  newTarget: number;
+  delta: number;
+  reason: string;
+}
+
 export function ReadinessContent({ userId, date }: ReadinessContentProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
+  const [previews, setPreviews] = useState<CategoryPreview[]>([]);
+
+  useEffect(() => {
+    if (selected === null) {
+      setPreviews([]);
+      return;
+    }
+    calculatePreviews(selected);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+
+  const calculatePreviews = async (readinessScore: number) => {
+    try {
+      const supabase = createClient();
+      const today = new Date();
+      const yesterday = subDays(today, 1);
+      const yesterdayStart = startOfDay(yesterday);
+      const yesterdayEnd = endOfDay(yesterday);
+      const dayMinus2 = subDays(today, 2);
+      const dayMinus2Start = startOfDay(dayMinus2);
+
+      // Fetch movements
+      const { data: movementsData } = await supabase
+        .from("movements")
+        .select("*")
+        .eq("user_id", userId);
+      const movements = (movementsData ?? []) as Movement[];
+
+      // Fetch recent sets (yesterday and day before)
+      const { data: recentSets } = await supabase
+        .from("sets")
+        .select("*")
+        .eq("user_id", userId)
+        .gte("logged_at", dayMinus2Start.toISOString())
+        .lte("logged_at", yesterdayEnd.toISOString())
+        .order("logged_at", { ascending: true });
+      const recentWorkoutSets = (recentSets ?? []) as WorkoutSet[];
+
+      const yKey = format(yesterdayStart, "yyyy-MM-dd");
+      const d2Key = format(dayMinus2Start, "yyyy-MM-dd");
+
+      // Group sets by category and date
+      const byCatDate = new Map<MovementCategory, Map<string, WorkoutSet[]>>();
+      recentWorkoutSets.forEach((s) => {
+        const d = new Date(s.logged_at);
+        d.setHours(0, 0, 0, 0);
+        const key = format(d, "yyyy-MM-dd");
+        const cat = s.category as MovementCategory;
+        if (!byCatDate.has(cat)) byCatDate.set(cat, new Map());
+        const inner = byCatDate.get(cat)!;
+        if (!inner.has(key)) inner.set(key, []);
+        inner.get(key)!.push(s);
+      });
+
+      // Calculate adjustment for each category
+      const newPreviews: CategoryPreview[] = [];
+      const categories: MovementCategory[] = ["push", "pull", "legs"];
+      
+      for (const cat of categories) {
+        const movement = movements.find((m) => m.category === cat);
+        if (!movement) continue;
+
+        const ySets = byCatDate.get(cat)?.get(yKey) ?? [];
+        const d2Sets = byCatDate.get(cat)?.get(d2Key);
+
+        const capOk = isCapRelaxed(ySets, d2Sets);
+        const suggestion = suggestDailyTargetDelta(
+          ySets,
+          movement.daily_target,
+          capOk,
+          movement.category,
+          readinessScore
+        );
+
+        const newTarget = Math.max(1, movement.daily_target + suggestion.delta);
+        newPreviews.push({
+          category: cat,
+          currentTarget: movement.daily_target,
+          newTarget,
+          delta: suggestion.delta,
+          reason: suggestion.reason,
+        });
+      }
+
+      setPreviews(newPreviews);
+    } catch (error) {
+      console.error("Error calculating previews:", error);
+      setPreviews([]);
+    }
+  };
 
   const submit = async () => {
     if (!selected) return;
@@ -61,8 +162,8 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
               <div className="space-y-0.5">
                 <div className="text-sm font-medium">How it affects training</div>
                 <div className="text-sm text-muted-foreground">
-                  Low scores pause increases; neutral or high scores allow increases when sets look
-                  easy.
+                  Higher scores increase targets more aggressively based on yesterday&apos;s performance.
+                  Low scores (≤2) pause increases for recovery.
                 </div>
               </div>
             </li>
@@ -91,6 +192,56 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
               </Button>
             ))}
           </div>
+          
+          {/* Preview Section */}
+          {selected !== null && previews.length > 0 && (
+            <div className="mt-4 rounded-lg border bg-muted/50 p-4">
+              <div className="mb-2 text-sm font-medium">Target adjustments for tomorrow:</div>
+              <div className="space-y-2">
+                {previews.map((p) => {
+                  const categoryName = p.category.charAt(0).toUpperCase() + p.category.slice(1);
+                  return (
+                    <div key={p.category} className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{categoryName}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">{p.currentTarget}</span>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <span
+                          className={
+                            p.delta > 0
+                              ? "font-semibold text-green-600 dark:text-green-400"
+                              : p.delta < 0
+                                ? "font-semibold text-red-600 dark:text-red-400"
+                                : "font-semibold"
+                          }
+                        >
+                          {p.newTarget}
+                        </span>
+                        {p.delta !== 0 && (
+                          <span
+                            className={
+                              p.delta > 0
+                                ? "text-xs text-green-600 dark:text-green-400"
+                                : "text-xs text-red-600 dark:text-red-400"
+                            }
+                          >
+                            ({p.delta > 0 ? "+" : ""}
+                            {p.delta})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {previews.some((p) => p.delta === 0) && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  No change: {previews.filter((p) => p.delta === 0).map((p) => p.reason).join(", ")}
+                </div>
+              )}
+            </div>
+          )}
+
           <Button className="mt-6 w-full" onClick={submit} disabled={!selected || saving}>
             {saving ? "Saving..." : "Continue"}
           </Button>

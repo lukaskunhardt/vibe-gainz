@@ -58,15 +58,19 @@ export type DailyAdjustment = {
 /**
  * Suggest next-day target delta based on a single day's work and the current target.
  *
- * Rules (step-based, automatic):
- * - Trivially Easy: if first non-max set reps >= target and first-set RPE <= 5 -> +5
- * - Easy: if total reps >= target and avg RPE <= 6 -> +3
- * - Good Zone: if total reps >= target and 6 < avg RPE <= 8 -> +2
- * - Strained: if total reps >= target and (avg RPE >= 8.5 or >=2 sets at RPE >= 9) -> -5
- * - Under Target: if total reps < target and avg RPE >= 8 -> -5; else maintain
- * - Max-effort-only day -> maintain
- * - High-set cap: if at least 3 sets and top 3 sets are RPE >= 8, do not increase. Only allow increases once
- *   at least 3 sets with RPE <= 6 are achieved (cap relaxed). This check is done via `capRelaxed` arg.
+ * New logic prioritizes set efficiency over absolute RPE:
+ * - Fewer sets to hit target = more efficient = should increase
+ * - RPE is a secondary check to avoid pushing too hard
+ * - Readiness score modulates aggressiveness of increases
+ *
+ * Rules:
+ * - Low readiness (≤2): block all increases
+ * - Target not reached: maintain
+ * - 1 set hits target: increase unless RPE 10
+ * - 2 sets hit target: increase unless RPE 9+
+ * - 3 sets hit target: increase only if RPE ≤7
+ * - 4+ sets hit target: maintain (inefficient)
+ * - High readiness (4-5): be more aggressive with increases
  */
 export function suggestDailyTargetDelta(
   setsYesterday: WorkoutSet[],
@@ -78,9 +82,9 @@ export function suggestDailyTargetDelta(
   const d = summarizeDay(setsYesterday);
   if (!d.hasNonMaxSets) return { delta: 0, reason: "max-effort only or no training sets" };
 
-  // Readiness gate: if feeling low (<=2), hold. We avoid decreases to keep behavior simple.
+  // Readiness gate: if feeling low (≤2), block increases
   const readiness = typeof readinessScore === "number" ? readinessScore : 3;
-  if (readiness <= 2) return { delta: 0, reason: "low readiness" };
+  if (readiness <= 2) return { delta: 0, reason: "low readiness - need recovery" };
 
   // Determine sets needed to reach target and RPE within those sets
   const nonMax = setsYesterday
@@ -99,42 +103,70 @@ export function suggestDailyTargetDelta(
   const firstSetRPE = firstSet?.rpe ?? null;
   const maxRPEUsed = used.reduce((mx, s) => Math.max(mx, s.rpe), 0);
 
-  // Fatigue cap: if first three sets are all RPE >= 8, block increases unless relaxed
-  const top3 = nonMax.slice(0, 3);
-  const top3AllAtLeast8 = top3.length === 3 && top3.every((s) => s.rpe >= 8);
-  const increaseBlockedByCap = top3AllAtLeast8 && !capRelaxed;
-
   if (!reached) return { delta: 0, reason: "target not reached" };
 
+  // Base step sizes by category
   const steps = {
-    legs: { trivial: 5, easy: 3, manageable: 2 },
-    push: { trivial: 3, easy: 2, manageable: 1 },
-    pull: { trivial: 2, easy: 1, manageable: 1 },
+    legs: { big: 5, medium: 3, small: 2 },
+    push: { big: 3, medium: 2, small: 1 },
+    pull: { big: 2, medium: 1, small: 1 },
   } as const;
 
-  const cat = category;
-  const catSteps = steps[cat];
+  const catSteps = steps[category];
+  
+  // High readiness bonus: upgrade step size when feeling great
+  const highReadiness = readiness >= 4;
 
-  // Trivially easy: one set meets target at RPE <= 5
-  if (setsToTarget === 1 && firstSetRPE !== null && firstSetRPE <= 5) {
-    if (increaseBlockedByCap) return { delta: 0, reason: "cap active (3xRPE>=8)" };
-    return { delta: catSteps.trivial, reason: "trivially easy" };
+  // ONE SET TO TARGET: Very efficient, almost always increase
+  if (setsToTarget === 1 && firstSetRPE !== null) {
+    // RPE 10: at absolute limit, maintain
+    if (firstSetRPE >= 10) {
+      return { delta: 0, reason: "1 set but at RPE 10 (maxed out)" };
+    }
+    // RPE 9: small increase (near limit but room to grow)
+    if (firstSetRPE >= 9) {
+      const step = highReadiness ? catSteps.medium : catSteps.small;
+      return { delta: step, reason: "1 set at RPE 9 (efficient but hard)" };
+    }
+    // RPE 8: medium increase (good training zone)
+    if (firstSetRPE >= 8) {
+      const step = highReadiness ? catSteps.big : catSteps.medium;
+      return { delta: step, reason: "1 set at RPE 8 (efficient)" };
+    }
+    // RPE ≤7: big increase (very easy)
+    const step = catSteps.big;
+    return { delta: step, reason: "1 set at RPE ≤7 (trivially easy)" };
   }
 
-  // Easy: within 2 sets and max RPE <= 6
-  if (setsToTarget <= 2 && maxRPEUsed <= 6) {
-    if (increaseBlockedByCap) return { delta: 0, reason: "cap active (3xRPE>=8)" };
-    return { delta: catSteps.easy, reason: "easy" };
+  // TWO SETS TO TARGET: Efficient, increase unless RPE very high
+  if (setsToTarget === 2) {
+    // RPE 9+: maintain (struggling)
+    if (maxRPEUsed >= 9) {
+      return { delta: 0, reason: "2 sets but max RPE ≥9 (struggling)" };
+    }
+    // RPE 8: small to medium increase
+    if (maxRPEUsed >= 8) {
+      const step = highReadiness ? catSteps.medium : catSteps.small;
+      return { delta: step, reason: "2 sets at RPE 8 (manageable)" };
+    }
+    // RPE ≤7: medium to big increase
+    const step = highReadiness ? catSteps.big : catSteps.medium;
+    return { delta: step, reason: "2 sets at RPE ≤7 (easy)" };
   }
 
-  // Manageable: within 3 sets and max RPE <= 7
-  if (setsToTarget <= 3 && maxRPEUsed <= 7) {
-    if (increaseBlockedByCap) return { delta: 0, reason: "cap active (3xRPE>=8)" };
-    return { delta: catSteps.manageable, reason: "manageable" };
+  // THREE SETS TO TARGET: Moderate efficiency, be conservative
+  if (setsToTarget === 3) {
+    // RPE 8+: maintain (taking too much effort)
+    if (maxRPEUsed >= 8) {
+      return { delta: 0, reason: "3 sets at RPE ≥8 (fatiguing)" };
+    }
+    // RPE ≤7: small increase
+    const step = highReadiness ? catSteps.medium : catSteps.small;
+    return { delta: step, reason: "3 sets at RPE ≤7 (manageable)" };
   }
 
-  // Otherwise, do not increase
-  return { delta: 0, reason: "fatiguing or many sets" };
+  // FOUR OR MORE SETS: Inefficient, maintain
+  return { delta: 0, reason: `${setsToTarget} sets needed (inefficient)` };
 }
 
 /**
