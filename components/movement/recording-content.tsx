@@ -6,14 +6,15 @@ import { createClient } from "@/lib/supabase/client";
 import { MovementCategory, Set as WorkoutSet } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Minus, Plus, Save, Trophy, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Trophy, Pencil } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { toast } from "sonner";
 import { calculateInitialDailyTarget, shouldAutoProgress } from "@/lib/utils/calculations";
-import { RPESelector } from "@/components/recording/rpe-selector";
-import { RPE10ConfirmationModal } from "@/components/recording/rpe-10-confirmation-modal";
 import { EnhancedProgressBar } from "@/components/recording/enhanced-progress-bar";
+import { SetLoggingModal } from "@/components/recording/set-logging-modal";
+import { CompletedSetsList } from "@/components/recording/completed-sets-list";
+import { updateSet, deleteSet } from "@/lib/hooks/use-sets";
 import { EXERCISE_VARIATIONS, getExerciseById, FORM_CUES } from "@/lib/constants/exercises";
 import {
   Sheet,
@@ -22,6 +23,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, CheckCircle2, ChevronUp, ChevronDown } from "lucide-react";
 
@@ -46,15 +57,25 @@ export function RecordingContent({
   } | null>(null);
   const [currentTarget, setCurrentTarget] = useState<number>(0);
   const [todaySets, setTodaySets] = useState<WorkoutSet[]>([]);
-  const [reps, setReps] = useState(0);
-  const [rpe, setRPE] = useState(0);
   const [loading, setLoading] = useState(true); // Initial page load only
   const [isRefreshing, setIsRefreshing] = useState(false); // Post-action data refresh
-  const [saving, setSaving] = useState(false);
-  const [showRPE10Modal, setShowRPE10Modal] = useState(false);
   const [lastBestSet, setLastBestSet] = useState<number>(0);
   const [showExerciseSheet, setShowExerciseSheet] = useState(false);
   const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
+  const [yesterdayTarget, setYesterdayTarget] = useState<number | undefined>(undefined);
+  const [readinessScore, setReadinessScore] = useState<number | null | undefined>(undefined);
+  const [yesterdaySummary, setYesterdaySummary] = useState<
+    { setsCount: number; avgRPE: number; reached: boolean } | null | undefined
+  >(undefined);
+
+  // Modal state
+  const [showSetModal, setShowSetModal] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [editingSet, setEditingSet] = useState<WorkoutSet | null>(null);
+
+  // Delete confirmation dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [setToDelete, setSetToDelete] = useState<string | null>(null);
 
   const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
   const exercises = EXERCISE_VARIATIONS[category];
@@ -92,12 +113,24 @@ export function RecordingContent({
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
 
+      // Calculate yesterday
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+      const yesterdayStart = new Date(yesterday);
+      yesterdayStart.setHours(0, 0, 0, 0);
+      const yesterdayEnd = new Date(yesterday);
+      yesterdayEnd.setHours(23, 59, 59, 999);
+
       // OPTIMIZATION: Parallelize all queries
       const [
         { data: movementData },
         { data: targetData },
         { data: setsData },
         { data: lastSessionSets },
+        { data: yesterdayTargetData },
+        { data: readinessData },
+        { data: yesterdaySetsData },
       ] = await Promise.all([
         // Fetch movement
         supabase
@@ -134,6 +167,29 @@ export function RecordingContent({
           .lt("logged_at", todayStart.toISOString())
           .order("logged_at", { ascending: false })
           .limit(20),
+        // Fetch yesterday's target from history
+        supabase
+          .from("movement_target_history")
+          .select("target")
+          .eq("user_id", userId)
+          .eq("category", category)
+          .eq("date", yesterdayStr),
+        // Fetch today's readiness score
+        supabase
+          .from("readiness")
+          .select("score")
+          .eq("user_id", userId)
+          .eq("date", todayStr)
+          .maybeSingle(),
+        // Fetch yesterday's sets for summary calculation
+        supabase
+          .from("sets")
+          .select("reps, rpe, is_max_effort, set_number")
+          .eq("user_id", userId)
+          .eq("category", category)
+          .gte("logged_at", yesterdayStart.toISOString())
+          .lte("logged_at", yesterdayEnd.toISOString())
+          .order("set_number", { ascending: true }),
       ]);
 
       // If no movement exists and we're in max effort mode with initialExercise, allow it
@@ -171,21 +227,34 @@ export function RecordingContent({
           : 0;
       setLastBestSet(calculatedLastBestSet);
 
-      // Prefill reps based on the next planned set
-      if (movementData && target > 0 && calculatedLastBestSet > 0) {
-        const recommendedSets = calculateRecommendedSets(target, calculatedLastBestSet);
-        if (isMaxEffort) {
-          setReps(movementData.max_effort_reps);
+      // Process yesterday's target
+      const yesterdayTargetValue = yesterdayTargetData?.[0]?.target;
+      setYesterdayTarget(yesterdayTargetValue);
+
+      // Process readiness score
+      const readinessValue = readinessData?.score ?? null;
+      setReadinessScore(readinessValue);
+
+      // Calculate yesterday's summary
+      if (yesterdaySetsData && yesterdaySetsData.length > 0 && yesterdayTargetValue !== undefined) {
+        const nonMaxSets = yesterdaySetsData.filter((s) => !s.is_max_effort);
+        if (nonMaxSets.length > 0) {
+          const totalReps = nonMaxSets.reduce((sum, s) => sum + s.reps, 0);
+          const avgRPE = nonMaxSets.reduce((sum, s) => sum + s.rpe, 0) / nonMaxSets.length;
+          const reached = totalReps >= yesterdayTargetValue;
+          setYesterdaySummary({
+            setsCount: nonMaxSets.length,
+            avgRPE,
+            reached,
+          });
         } else {
-          // Set reps to the next planned set based on how many sets are already completed
-          const nextSetIndex = setsData?.length || 0;
-          const nextSetReps = recommendedSets[nextSetIndex] || recommendedSets[0] || 0;
-          setReps(nextSetReps);
+          setYesterdaySummary(null);
         }
       } else {
-        // Initial setup - start with 0
-        setReps(0);
+        setYesterdaySummary(null);
       }
+
+      // No need to prefill reps - modal will handle this
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Failed to load data");
@@ -198,35 +267,50 @@ export function RecordingContent({
     }
   };
 
-  const handleLogSet = async () => {
-    if (reps <= 0) {
-      toast.error("Please enter a valid number of reps");
-      return;
-    }
-
-    // Show RPE 10 confirmation if not max effort mode
-    if (!isMaxEffort && rpe === 10) {
-      setShowRPE10Modal(true);
-      return;
-    }
-
-    await saveSet(false);
+  const handleLogNewSet = () => {
+    setModalMode("create");
+    setEditingSet(null);
+    setShowSetModal(true);
   };
 
-  const handleMaxEffortConfirm = async () => {
-    await saveSet(true);
-    setShowRPE10Modal(false);
+  const handleEditSet = (set: WorkoutSet) => {
+    setModalMode("edit");
+    setEditingSet(set);
+    setShowSetModal(true);
   };
 
-  const handleRegularSetConfirm = async () => {
-    await saveSet(false);
-    setShowRPE10Modal(false);
+  const handleDeleteSet = (setId: string) => {
+    setSetToDelete(setId);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteSet = async () => {
+    if (!setToDelete) return;
+
+    setIsRefreshing(true);
+    try {
+      const result = await deleteSet(setToDelete, userId, category, new Date());
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      toast.success("Set deleted successfully");
+      await loadData(false);
+    } catch (error) {
+      console.error("Error deleting set:", error);
+      toast.error("Failed to delete set. Please try again.");
+    } finally {
+      setIsRefreshing(false);
+      setShowDeleteDialog(false);
+      setSetToDelete(null);
+    }
   };
 
   const handleExerciseChange = async (exerciseId: string) => {
     if (!movement) return;
 
-    setSaving(true);
+    setIsRefreshing(true);
     try {
       const supabase = createClient();
       const { error } = await supabase
@@ -248,7 +332,7 @@ export function RecordingContent({
       console.error("Error updating exercise:", error);
       toast.error("Failed to update exercise. Please try again.");
     } finally {
-      setSaving(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -256,10 +340,38 @@ export function RecordingContent({
     setExpandedExercise(expandedExercise === exerciseId ? null : exerciseId);
   };
 
-  const saveSet = async (isMaxEffortSet: boolean) => {
+  const handleSaveSet = async (reps: number, rpe: number, isMaxEffortSet: boolean) => {
     if (!movement) return;
 
-    setSaving(true);
+    // Handle edit mode
+    if (modalMode === "edit" && editingSet) {
+      setIsRefreshing(true);
+      try {
+        const result = await updateSet(editingSet.id, { reps, rpe });
+
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        toast.success("Set updated successfully");
+        await loadData(false);
+      } catch (error) {
+        console.error("Error updating set:", error);
+        toast.error("Failed to update set. Please try again.");
+      } finally {
+        setIsRefreshing(false);
+      }
+      return;
+    }
+
+    // Handle create mode
+    await saveSet(reps, rpe, isMaxEffortSet);
+  };
+
+  const saveSet = async (reps: number, rpe: number, isMaxEffortSet: boolean) => {
+    if (!movement) return;
+
+    setIsRefreshing(true);
     try {
       const supabase = createClient();
       let movementId = movement.id;
@@ -397,16 +509,13 @@ export function RecordingContent({
         return; // Exit early
       }
 
-      // Reload data (which will set the next planned set reps)
+      // Reload data
       await loadData(false); // Refresh without skeleton
-
-      // Reset RPE for the next set
-      setRPE(0);
     } catch (error) {
       console.error("Error saving set:", error);
       toast.error("Failed to save set. Please try again.");
     } finally {
-      setSaving(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -492,6 +601,13 @@ export function RecordingContent({
     EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name ||
     movement.exercise_variation;
 
+  // Calculate next planned reps for the modal
+  const recommendedSets = calculateRecommendedSets(currentTarget, lastBestSet);
+  const nextSetIndex = todaySets.length;
+  const nextPlannedReps = isMaxEffort
+    ? movement.max_effort_reps
+    : recommendedSets[nextSetIndex] || recommendedSets[0] || 0;
+
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6">
@@ -536,62 +652,63 @@ export function RecordingContent({
             <EnhancedProgressBar
               totalTarget={currentTarget}
               completedSets={todaySets}
-              plannedSets={calculateRecommendedSets(currentTarget, lastBestSet)}
+              plannedSets={recommendedSets}
               showAnimation={currentTotal >= currentTarget}
+              yesterdayTarget={yesterdayTarget}
+              readinessScore={readinessScore}
+              yesterdaySummary={yesterdaySummary}
+              isLoadingContext={yesterdayTarget === undefined}
             />
           )}
 
-          {/* Rep Counter */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium">
-              {isMaxEffort ? "Max Effort Reps" : "Reps"}
-            </label>
-            <div className="flex items-center justify-center gap-4">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-16 w-16"
-                onClick={() => setReps(Math.max(0, reps - 1))}
-                disabled={reps <= 0}
-              >
-                <Minus className="h-6 w-6" />
-              </Button>
-              <div className="w-32 text-center text-6xl font-bold">{reps}</div>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-16 w-16"
-                onClick={() => setReps(reps + 1)}
-              >
-                <Plus className="h-6 w-6" />
-              </Button>
-            </div>
-          </div>
+          {/* Completed Sets List */}
+          <CompletedSetsList
+            sets={todaySets}
+            onEditSet={handleEditSet}
+            onDeleteSet={handleDeleteSet}
+            isRefreshing={isRefreshing}
+          />
 
-          {/* RPE Selector */}
-          {!isMaxEffort && <RPESelector value={rpe} onChange={setRPE} />}
-
-          {/* Save Button */}
-          <Button
-            onClick={handleLogSet}
-            disabled={saving || isRefreshing || reps <= 0 || (!isMaxEffort && rpe === 0)}
-            className="w-full"
-            size="lg"
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? "Saving..." : isMaxEffort ? "Record Max Effort" : "Save Set"}
+          {/* Log Set Button */}
+          <Button onClick={handleLogNewSet} disabled={isRefreshing} className="w-full" size="lg">
+            <Plus className="mr-2 h-5 w-5" />
+            {isMaxEffort ? "Record Max Effort" : "Log Set"}
           </Button>
         </CardContent>
       </Card>
 
-      {/* RPE 10 Confirmation Modal */}
-      {showRPE10Modal && (
-        <RPE10ConfirmationModal
-          onMaxEffort={handleMaxEffortConfirm}
-          onRegularSet={handleRegularSetConfirm}
-          onChangeRPE={() => setShowRPE10Modal(false)}
-        />
-      )}
+      {/* Set Logging Modal */}
+      <SetLoggingModal
+        isOpen={showSetModal}
+        onClose={() => setShowSetModal(false)}
+        mode={modalMode}
+        existingSet={editingSet || undefined}
+        nextPlannedReps={nextPlannedReps}
+        isMaxEffort={isMaxEffort}
+        onSave={handleSaveSet}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Set?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this set and renumber any subsequent sets. This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSet}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Exercise Selection Sheet */}
       <Sheet open={showExerciseSheet} onOpenChange={setShowExerciseSheet}>
@@ -626,7 +743,7 @@ export function RecordingContent({
                         handleExerciseChange(exercise.id);
                       }
                     }}
-                    disabled={saving}
+                    disabled={isRefreshing}
                     className="flex w-full items-center justify-between p-4 text-left transition-opacity disabled:opacity-50"
                   >
                     <div className="flex flex-1 items-center gap-3">

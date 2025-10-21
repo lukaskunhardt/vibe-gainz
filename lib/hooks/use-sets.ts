@@ -114,3 +114,98 @@ export function useWeekSets(userId?: string, category?: MovementCategory, weekSt
 
   return { sets, loading, error };
 }
+
+/**
+ * Update an existing set's reps and RPE
+ */
+export async function updateSet(
+  setId: string,
+  updates: { reps?: number; rpe?: number }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createClient();
+    const { error } = await supabase.from("sets").update(updates).eq("id", setId);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating set:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update set",
+    };
+  }
+}
+
+/**
+ * Delete a set and renumber subsequent sets
+ */
+export async function deleteSet(
+  setId: string,
+  userId: string,
+  category: MovementCategory,
+  date: Date
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = createClient();
+
+    // Get the set to be deleted to know its set_number
+    const { data: setToDelete, error: fetchError } = await supabase
+      .from("sets")
+      .select("set_number, logged_at")
+      .eq("id", setId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!setToDelete) throw new Error("Set not found");
+
+    // Delete the set
+    const { error: deleteError } = await supabase.from("sets").delete().eq("id", setId);
+
+    if (deleteError) throw deleteError;
+
+    // Renumber subsequent sets from the same day
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const { data: subsequentSets, error: subsequentError } = await supabase
+      .from("sets")
+      .select("id, set_number")
+      .eq("user_id", userId)
+      .eq("category", category)
+      .gte("logged_at", dayStart.toISOString())
+      .lte("logged_at", dayEnd.toISOString())
+      .gt("set_number", setToDelete.set_number)
+      .order("set_number", { ascending: true });
+
+    if (subsequentError) throw subsequentError;
+
+    // Update set_numbers for subsequent sets
+    if (subsequentSets && subsequentSets.length > 0) {
+      const updates = subsequentSets.map((set, index) => ({
+        id: set.id,
+        set_number: setToDelete.set_number + index,
+      }));
+
+      for (const update of updates) {
+        const { error: updateError } = await supabase
+          .from("sets")
+          .update({ set_number: update.set_number })
+          .eq("id", update.id);
+
+        if (updateError) throw updateError;
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting set:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete set",
+    };
+  }
+}

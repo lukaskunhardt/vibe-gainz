@@ -5,11 +5,21 @@ import { Set as WorkoutSet } from "@/types";
 import { colorForRPE } from "@/lib/constants/rpe";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+interface YesterdaySummary {
+  setsCount: number;
+  avgRPE: number;
+  reached: boolean;
+}
+
 interface EnhancedProgressBarProps {
   totalTarget: number;
   completedSets: WorkoutSet[];
   plannedSets: number[];
   showAnimation: boolean;
+  yesterdayTarget?: number;
+  readinessScore?: number | null;
+  yesterdaySummary?: YesterdaySummary | null;
+  isLoadingContext?: boolean;
 }
 
 export function EnhancedProgressBar({
@@ -17,6 +27,10 @@ export function EnhancedProgressBar({
   completedSets,
   plannedSets,
   showAnimation,
+  yesterdayTarget,
+  readinessScore,
+  yesterdaySummary,
+  isLoadingContext = false,
 }: EnhancedProgressBarProps) {
   const [hasAnimated, setHasAnimated] = useState(false);
   const [animatingSegments, setAnimatingSegments] = useState<Set<string>>(new Set());
@@ -25,6 +39,57 @@ export function EnhancedProgressBar({
   const currentTotal = completedSets.reduce((sum, set) => sum + set.reps, 0);
   const isOverTarget = currentTotal > totalTarget;
   const overflowReps = isOverTarget ? currentTotal - totalTarget : 0;
+
+  // Generate dynamic target explanation
+  const generateTargetExplanation = (): string => {
+    // If we don't have enough context data, return a simple explanation
+    if (yesterdayTarget === undefined || !plannedSets.length) {
+      return `Today's plan: ${plannedSets.length} ${plannedSets.length === 1 ? "set" : "sets"} totaling ${totalTarget} reps.`;
+    }
+
+    const delta = totalTarget - yesterdayTarget;
+    const setsDescription =
+      plannedSets.length > 0
+        ? `${plannedSets.length} ${plannedSets.length === 1 ? "set" : "sets"} (${plannedSets.slice(0, 3).join(", ")}${plannedSets.length > 3 ? "..." : ""} reps)`
+        : `${totalTarget} reps`;
+
+    // Determine reason based on delta and context
+    if (delta > 0) {
+      // Increased
+      if (readinessScore !== undefined && readinessScore !== null && readinessScore <= 2) {
+        // Should not happen, but handle it
+        return `Increased by ${delta} reps from yesterday's ${yesterdayTarget} reps. Today's plan: ${setsDescription}.`;
+      } else if (yesterdaySummary?.setsCount === 1) {
+        return `Increased by ${delta} reps from yesterday's ${yesterdayTarget} reps—you crushed it in just 1 set! Today's plan: ${setsDescription}.`;
+      } else if (yesterdaySummary?.setsCount === 2) {
+        return `Increased by ${delta} reps from yesterday's ${yesterdayTarget} reps because you hit your target efficiently in 2 sets. Today's plan: ${setsDescription}.`;
+      } else if (yesterdaySummary?.reached) {
+        return `Increased by ${delta} reps from yesterday's ${yesterdayTarget} reps based on your solid performance. Today's plan: ${setsDescription}.`;
+      } else {
+        return `Increased by ${delta} reps from yesterday's ${yesterdayTarget} reps. Today's plan: ${setsDescription}.`;
+      }
+    } else if (delta < 0) {
+      // Decreased
+      if (readinessScore !== undefined && readinessScore !== null && readinessScore <= 2) {
+        return `Decreased by ${Math.abs(delta)} reps from yesterday's ${yesterdayTarget} reps because you logged low readiness for recovery. Today's plan: ${setsDescription}.`;
+      } else {
+        return `Decreased by ${Math.abs(delta)} reps from yesterday's ${yesterdayTarget} reps to optimize recovery. Today's plan: ${setsDescription}.`;
+      }
+    } else {
+      // Same as yesterday
+      if (readinessScore !== undefined && readinessScore !== null && readinessScore <= 2) {
+        return `Same as yesterday (${yesterdayTarget} reps) because you logged low readiness for recovery. Today's plan: ${setsDescription}.`;
+      } else if (yesterdaySummary && !yesterdaySummary.reached) {
+        return `Same as yesterday (${yesterdayTarget} reps) because the target wasn't fully reached. Today's plan: ${setsDescription}.`;
+      } else if (yesterdaySummary && yesterdaySummary.setsCount >= 4) {
+        return `Same as yesterday (${yesterdayTarget} reps) to maintain efficiency—yesterday took ${yesterdaySummary.setsCount} sets. Today's plan: ${setsDescription}.`;
+      } else {
+        return `Same as yesterday (${yesterdayTarget} reps). Today's plan: ${setsDescription}.`;
+      }
+    }
+  };
+
+  const targetExplanation = generateTargetExplanation();
 
   // Trigger animation only once when target is reached
   useEffect(() => {
@@ -73,77 +138,26 @@ export function EnhancedProgressBar({
     return { startPercentage, width, color, set, index };
   });
 
-  // Create planned sets description
-  const plannedSetsDescription =
-    plannedSets.length > 0
-      ? `Planned: ${plannedSets.map((reps, i) => `${reps} reps${i < plannedSets.length - 1 ? ", " : ""}`).join("")}`
-      : "";
-
   return (
     <div className="space-y-3">
-      {/* Label with description */}
+      {/* Label with dynamic explanation */}
       <div>
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold">Today&apos;s Progress</span>
         </div>
-        {plannedSetsDescription && (
-          <p className="mt-1 text-xs text-muted-foreground">{plannedSetsDescription}</p>
+        {isLoadingContext ? (
+          // Skeleton loading state
+          <div className="mt-1 space-y-1">
+            <div className="h-3 w-full animate-pulse rounded bg-muted"></div>
+            <div className="h-3 w-3/4 animate-pulse rounded bg-muted"></div>
+          </div>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">{targetExplanation}</p>
         )}
       </div>
 
       {/* Enhanced Progress Bar */}
       <div className="relative">
-        {/* Set labels above the bar - both completed and planned */}
-        <div className="relative mb-2 h-5">
-          {/* Completed set labels */}
-          {completedSegments.map((segment) => {
-            const actualCenter = segment.startPercentage + segment.width / 2;
-            // Cap at 98% to keep label visible even with overflow
-            const displayCenter = Math.min(actualCenter, 98);
-
-            return (
-              <div
-                key={`label-completed-${segment.index}`}
-                className="absolute"
-                style={{
-                  left: `${displayCenter}%`,
-                }}
-              >
-                <div className="relative flex -translate-x-1/2 flex-col items-center">
-                  <span className="whitespace-nowrap text-xs font-bold text-foreground">
-                    Set {segment.index + 1}
-                  </span>
-                  <div className="h-1 w-0.5 bg-foreground/40"></div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Planned set labels (for sets not yet completed) */}
-          {plannedSegments.slice(completedSegments.length).map((segment, idx) => {
-            const actualCenter = segment.startPercentage + segment.width / 2;
-            if (actualCenter > 100) return null;
-            const setNumber = completedSegments.length + idx + 1;
-
-            return (
-              <div
-                key={`label-planned-${segment.index}`}
-                className="absolute"
-                style={{
-                  left: `${actualCenter}%`,
-                }}
-              >
-                <div className="relative flex -translate-x-1/2 flex-col items-center">
-                  <span className="whitespace-nowrap text-xs font-semibold text-muted-foreground">
-                    (Set {setNumber})
-                  </span>
-                  <div className="h-1 w-0.5 bg-muted-foreground/30"></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
         <div
           className={`relative h-14 w-full overflow-hidden rounded-2xl border-4 border-foreground/80 bg-muted/40 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] transition-all duration-500 ${
             showAnimation && hasAnimated
@@ -234,21 +248,14 @@ export function EnhancedProgressBar({
               />
             );
           })}
-
-          {/* Overflow indicator (beyond 100%) */}
-          {isOverTarget && (
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border-2 border-foreground/60 bg-primary px-3 py-1 text-sm font-black text-primary-foreground shadow-md">
-              +{overflowReps}
-            </div>
-          )}
         </div>
 
         {/* Total volume counter below bar (right side) */}
         <div className="mt-2 flex justify-end">
           <span className="text-xs font-semibold text-muted-foreground">
-            {currentTotal} / {totalTarget} reps
+            {isOverTarget ? totalTarget : currentTotal} / {totalTarget}
             {overflowReps > 0 && (
-              <span className="ml-1 font-black text-primary">(+{overflowReps})</span>
+              <span className="ml-1 font-black text-primary"> +{overflowReps} additional reps</span>
             )}
           </span>
         </div>
