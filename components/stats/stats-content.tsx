@@ -345,7 +345,7 @@ function SingleCategoryChart({
                                     <div className="flex items-center gap-2">
                                       <span
                                         className="inline-block h-3 w-3 rounded"
-                                        style={{ backgroundColor: "hsl(var(--primary))" }}
+                                        style={{ backgroundColor: "#EF4444" }}
                                       />
                                       <span className="text-xs">Readiness (1-5)</span>
                                     </div>
@@ -518,17 +518,17 @@ function SingleCategoryChart({
                       </Bar>
                     )}
 
-                    {hasReadinessLine && (
-                      <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="readiness"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                        dot={false}
-                        name="Readiness"
-                      />
-                    )}
+              {hasReadinessLine && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="readiness"
+                  stroke="#EF4444"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Readiness"
+                />
+              )}
               {hasBodyWeightLine && (
                 <Line
                   yAxisId="right"
