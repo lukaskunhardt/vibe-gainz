@@ -61,7 +61,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
         .from("movements")
         .select("*")
         .eq("user_id", userId);
-      let movementList = (movementsData ?? []) as Movement[];
+      const movementList = (movementsData ?? []) as Movement[];
 
       // Auto-adjust daily targets once per day based on yesterday's performance
       try {
@@ -108,7 +108,6 @@ export function DashboardContent({ userId }: DashboardContentProps) {
           inner.get(key)!.push(s);
         });
 
-        let anyUpdated = false;
         for (const m of movementList) {
           // Only adjust once per calendar day
           const updatedAt = m.updated_at ? new Date(m.updated_at) : undefined;
@@ -118,46 +117,50 @@ export function DashboardContent({ userId }: DashboardContentProps) {
           const ySets = byCatDate.get(cat)?.get(yKey) ?? [];
           const d2Sets = byCatDate.get(cat)?.get(d2Key);
 
+          // Get current target from history
+          const { data: currentTargetData } = await supabase
+            .from("movement_target_history")
+            .select("target")
+            .eq("movement_id", m.id)
+            .lte("date", format(yesterdayStart, "yyyy-MM-dd"))
+            .order("date", { ascending: false })
+            .limit(1);
+          const currentTarget = currentTargetData?.[0]?.target ?? 0;
+
           const capOk = isCapRelaxed(ySets, d2Sets);
           const readinessScore = readiness?.score ?? 3;
           const suggestion = suggestDailyTargetDelta(
             ySets,
-            m.daily_target,
+            currentTarget,
             capOk,
             m.category,
             readinessScore
           );
 
           if (suggestion.delta !== 0) {
-            const nextTarget = Math.max(1, m.daily_target + suggestion.delta);
-            const { error } = await supabase
-              .from("movements")
-              .update({ daily_target: nextTarget, updated_at: new Date().toISOString() })
-              .eq("id", m.id);
+            const nextTarget = Math.max(1, currentTarget + suggestion.delta);
+            const effectiveDate = format(todayStart, "yyyy-MM-dd");
+            const { error } = await supabase.from("movement_target_history").upsert(
+              {
+                user_id: userId,
+                movement_id: m.id,
+                category: m.category,
+                date: effectiveDate,
+                target: nextTarget,
+              },
+              { onConflict: "movement_id,date" }
+            );
             if (!error) {
-              const effectiveDate = format(todayStart, "yyyy-MM-dd");
-              await supabase.from("movement_target_history").upsert(
-                {
-                  user_id: userId,
-                  movement_id: m.id,
-                  category: m.category,
-                  date: effectiveDate,
-                  target: nextTarget,
-                },
-                { onConflict: "movement_id,date" }
-              );
-              anyUpdated = true;
+              // Update movements.updated_at to track last adjustment
+              await supabase
+                .from("movements")
+                .update({ updated_at: new Date().toISOString() })
+                .eq("id", m.id);
               toast.success(
-                `${cat.charAt(0).toUpperCase() + cat.slice(1)} target: ${m.daily_target} → ${nextTarget} (${suggestion.reason})`
+                `${cat.charAt(0).toUpperCase() + cat.slice(1)} target: ${currentTarget} → ${nextTarget} (${suggestion.reason})`
               );
             }
           }
-        }
-
-        // Re-fetch movements if any target was updated
-        if (anyUpdated) {
-          const refetch = await supabase.from("movements").select("*").eq("user_id", userId);
-          movementList = (refetch.data ?? movementList) as Movement[];
         }
       } catch {
         // Ignore auto-adjust errors to avoid blocking dashboard load
@@ -269,7 +272,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
           } catch {}
 
           // Get the historical target for the selected date
-          let targetReps = movement?.daily_target || 0;
+          let targetReps = 0;
           if (movement) {
             const historicalTarget = await getHistoricalTarget(movement.id, selectedDate);
             if (historicalTarget !== null) {

@@ -316,7 +316,7 @@ export function StatsContent({ userId }: StatsContentProps) {
         date: day.date,
         total: totalReps,
         readiness: readinessByDate?.[day.date],
-        target: currentTarget ?? movement?.daily_target,
+        target: currentTarget,
         setCount: sets.length,
       };
 
@@ -338,7 +338,7 @@ export function StatsContent({ userId }: StatsContentProps) {
 
       return row;
     });
-  }, [categoryStats, selectionSet, readinessByDate, movement?.daily_target, targetHistory]);
+  }, [categoryStats, selectionSet, readinessByDate, targetHistory]);
 
   const chartDataWithTrend: ChartRow[] = useMemo(() => {
     if (chartData.length === 0) return [];
@@ -394,7 +394,7 @@ export function StatsContent({ userId }: StatsContentProps) {
 
   const hasReadinessLine =
     showReadiness && chartDataWithTrend.some((row) => typeof row.readiness === "number");
-  const showTargetLine = showTarget && movement && typeof movement.daily_target === "number";
+  const showTargetLine = showTarget && movement && targetHistory && targetHistory.length > 0;
 
   return (
     <div className="space-y-6">

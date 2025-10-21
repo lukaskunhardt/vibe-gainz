@@ -14,7 +14,6 @@ export interface Movement {
   exercise_variation: string;
   max_effort_reps: number;
   max_effort_date: string;
-  daily_target: number;
   is_unlocked: boolean;
   created_at: string;
   updated_at: string;

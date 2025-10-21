@@ -34,8 +34,8 @@ export function RecordingContent({
     id: string;
     exercise_variation: string;
     max_effort_reps: number;
-    daily_target: number;
   } | null>(null);
+  const [currentTarget, setCurrentTarget] = useState<number>(0);
   const [todaySets, setTodaySets] = useState<WorkoutSet[]>([]);
   const [reps, setReps] = useState(0);
   const [rpe, setRPE] = useState(0);
@@ -81,15 +81,31 @@ export function RecordingContent({
             id: "", // Will be created when saving
             exercise_variation: initialExercise,
             max_effort_reps: 0,
-            daily_target: 0,
           });
+          setCurrentTarget(0);
         } else {
           toast.error("Movement not configured. Please set it up first.");
           router.push(`/movement/${category}/select`);
           return;
         }
-      } else {
+      }
+
+      let target = 0;
+      if (movementData) {
         setMovement(movementData);
+
+        // Fetch current target from history
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const { data: targetData } = await supabase
+          .from("movement_target_history")
+          .select("target")
+          .eq("movement_id", movementData.id)
+          .lte("date", todayStr)
+          .order("date", { ascending: false })
+          .limit(1);
+        target = targetData?.[0]?.target ?? 0;
+        setCurrentTarget(target);
       }
 
       // Fetch today's sets
@@ -110,11 +126,8 @@ export function RecordingContent({
       setTodaySets(setsData || []);
 
       // Prefill reps strictly to planned per-set target (no discounts)
-      if (movementData) {
-        const { targetRepsPerSet } = calculateRecommendedSets(
-          movementData.daily_target,
-          movementData.max_effort_reps
-        );
+      if (movementData && target > 0) {
+        const { targetRepsPerSet } = calculateRecommendedSets(target, movementData.max_effort_reps);
         setReps(isMaxEffort ? movementData.max_effort_reps : targetRepsPerSet);
       } else {
         // Initial setup - start with 0
@@ -245,7 +258,6 @@ export function RecordingContent({
             exercise_variation: movement.exercise_variation,
             max_effort_reps: reps,
             max_effort_date: new Date().toISOString(),
-            daily_target: newDailyTarget,
             is_unlocked: true,
           })
           .select()
@@ -255,6 +267,18 @@ export function RecordingContent({
         if (newMovement) {
           movementId = newMovement.id;
           setMovement(newMovement);
+
+          // Insert initial target into history
+          const today = new Date();
+          const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+          await supabase.from("movement_target_history").insert({
+            user_id: userId,
+            movement_id: newMovement.id,
+            category,
+            date: todayStr,
+            target: newDailyTarget,
+          });
+          setCurrentTarget(newDailyTarget);
         }
       }
 
@@ -287,7 +311,6 @@ export function RecordingContent({
         const updateData: Record<string, string | number> = {
           max_effort_reps: reps,
           max_effort_date: new Date().toISOString(),
-          daily_target: newDailyTarget,
           updated_at: new Date().toISOString(),
         };
 
@@ -302,6 +325,21 @@ export function RecordingContent({
           .eq("id", movement.id);
 
         if (updateError) throw updateError;
+
+        // Insert new target into history
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        await supabase.from("movement_target_history").upsert(
+          {
+            user_id: userId,
+            movement_id: movement.id,
+            category,
+            date: todayStr,
+            target: newDailyTarget,
+          },
+          { onConflict: "movement_id,date" }
+        );
+        setCurrentTarget(newDailyTarget);
 
         // Mark max effort prompt as completed if exists
         await supabase
@@ -323,17 +361,18 @@ export function RecordingContent({
       setSelectedSetId(null);
       setIsEditMode(false);
 
-      // Check if daily target is reached (use the latest movement data)
-      const currentMovement = movement.id
-        ? movement
-        : { ...movement, daily_target: calculateInitialDailyTarget(reps) };
+      // Check if daily target is reached
       const newTotal = todaySets.reduce((sum, s) => sum + s.reps, 0) + reps;
+      const targetToCheck =
+        (isMaxEffortSet || isMaxEffort) && !movement.id
+          ? calculateInitialDailyTarget(reps)
+          : currentTarget;
 
       // For max effort sets, always redirect to dashboard
       if (isMaxEffortSet || isMaxEffort) {
         toast.success("🎉 Max effort recorded! Check the dashboard.");
         setTimeout(() => router.push("/dashboard"), 1500);
-      } else if (newTotal >= (currentMovement.daily_target || 0)) {
+      } else if (newTotal >= targetToCheck) {
         toast.success("🎉 Daily target reached! Great work!");
         setTimeout(() => router.push("/dashboard"), 1500);
       }
@@ -361,7 +400,7 @@ export function RecordingContent({
   }
 
   const currentTotal = todaySets.reduce((sum, set) => sum + set.reps, 0);
-  const percentage = Math.min((currentTotal / movement.daily_target) * 100, 100);
+  const percentage = currentTarget > 0 ? Math.min((currentTotal / currentTarget) * 100, 100) : 0;
   const exerciseName =
     EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name ||
     movement.exercise_variation;
@@ -402,7 +441,7 @@ export function RecordingContent({
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-medium">Today&apos;s Progress</span>
                 <span className="text-sm text-muted-foreground">
-                  {currentTotal} / {movement.daily_target} reps
+                  {currentTotal} / {currentTarget} reps
                 </span>
               </div>
               <Progress value={percentage} className="h-2" />
@@ -415,21 +454,21 @@ export function RecordingContent({
               <h3 className="mb-2 text-sm font-medium">Recommended Sets</h3>
               {(() => {
                 const { targetRepsPerSet } = calculateRecommendedSets(
-                  movement.daily_target,
+                  currentTarget,
                   movement.max_effort_reps
                 );
                 return (
                   <p className="mb-3 text-xs text-muted-foreground">
                     Based on a max effort of {movement.max_effort_reps} reps, aim for about{" "}
                     {targetRepsPerSet} reps per set (RPE 7-8) to reach your daily target of{" "}
-                    {movement.daily_target} reps.
+                    {currentTarget} reps.
                   </p>
                 );
               })()}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {(() => {
                   const { targetRepsPerSet, numberOfSets } = calculateRecommendedSets(
-                    movement.daily_target,
+                    currentTarget,
                     movement.max_effort_reps
                   );
                   const totalCards = Math.max(numberOfSets, todaySets.length + 1);

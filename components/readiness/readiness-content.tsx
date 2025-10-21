@@ -89,22 +89,32 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
         const movement = movements.find((m) => m.category === cat);
         if (!movement) continue;
 
+        // Get current target from history
+        const { data: currentTargetData } = await supabase
+          .from("movement_target_history")
+          .select("target")
+          .eq("movement_id", movement.id)
+          .lte("date", yKey)
+          .order("date", { ascending: false })
+          .limit(1);
+        const currentTarget = currentTargetData?.[0]?.target ?? 0;
+
         const ySets = byCatDate.get(cat)?.get(yKey) ?? [];
         const d2Sets = byCatDate.get(cat)?.get(d2Key);
 
         const capOk = isCapRelaxed(ySets, d2Sets);
         const suggestion = suggestDailyTargetDelta(
           ySets,
-          movement.daily_target,
+          currentTarget,
           capOk,
           movement.category,
           readinessScore
         );
 
-        const newTarget = Math.max(1, movement.daily_target + suggestion.delta);
+        const newTarget = Math.max(1, currentTarget + suggestion.delta);
         newPreviews.push({
           category: cat,
-          currentTarget: movement.daily_target,
+          currentTarget,
           newTarget,
           delta: suggestion.delta,
           reason: suggestion.reason,
