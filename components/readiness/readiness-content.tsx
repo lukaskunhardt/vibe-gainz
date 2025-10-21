@@ -84,7 +84,7 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
       // Calculate adjustment for each category
       const newPreviews: CategoryPreview[] = [];
       const categories: MovementCategory[] = ["push", "pull", "legs"];
-      
+
       for (const cat of categories) {
         const movement = movements.find((m) => m.category === cat);
         if (!movement) continue;
@@ -162,8 +162,8 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
               <div className="space-y-0.5">
                 <div className="text-sm font-medium">How it affects training</div>
                 <div className="text-sm text-muted-foreground">
-                  Higher scores increase targets more aggressively based on yesterday&apos;s performance.
-                  Low scores (≤2) pause increases for recovery.
+                  Higher scores increase targets more aggressively based on yesterday&apos;s
+                  performance. Low scores (≤2) pause increases for recovery.
                 </div>
               </div>
             </li>
@@ -192,7 +192,7 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
               </Button>
             ))}
           </div>
-          
+
           {/* Preview Section */}
           {selected !== null && previews.length > 0 && (
             <div className="mt-4 rounded-lg border bg-muted/50 p-4">
@@ -236,7 +236,11 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
               </div>
               {previews.some((p) => p.delta === 0) && (
                 <div className="mt-2 text-xs text-muted-foreground">
-                  No change: {previews.filter((p) => p.delta === 0).map((p) => p.reason).join(", ")}
+                  No change:{" "}
+                  {previews
+                    .filter((p) => p.delta === 0)
+                    .map((p) => p.reason)
+                    .join(", ")}
                 </div>
               )}
             </div>

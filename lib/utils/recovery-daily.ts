@@ -113,7 +113,7 @@ export function suggestDailyTargetDelta(
   } as const;
 
   const catSteps = steps[category];
-  
+
   // High readiness bonus: upgrade step size when feeling great
   const highReadiness = readiness >= 4;
 

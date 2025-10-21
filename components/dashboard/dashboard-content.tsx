@@ -184,6 +184,25 @@ export function DashboardContent({ userId }: DashboardContentProps) {
 
       // Weekly reviews removed
 
+      // Helper: Get historical target for a specific date
+      const getHistoricalTarget = async (
+        movementId: string,
+        date: Date
+      ): Promise<number | null> => {
+        const dateStr = format(date, "yyyy-MM-dd");
+
+        // Try to get the exact target for this date or the most recent one before it
+        const { data: historyData } = await supabase
+          .from("movement_target_history")
+          .select("target")
+          .eq("movement_id", movementId)
+          .lte("date", dateStr)
+          .order("date", { ascending: false })
+          .limit(1);
+
+        return historyData?.[0]?.target ?? null;
+      };
+
       // Build progress data for each category
       const categories: MovementCategory[] = ["push", "pull", "legs"];
       const progressData: CategoryProgress[] = await Promise.all(
@@ -249,10 +268,19 @@ export function DashboardContent({ userId }: DashboardContentProps) {
             }
           } catch {}
 
+          // Get the historical target for the selected date
+          let targetReps = movement?.daily_target || 0;
+          if (movement) {
+            const historicalTarget = await getHistoricalTarget(movement.id, selectedDate);
+            if (historicalTarget !== null) {
+              targetReps = historicalTarget;
+            }
+          }
+
           return {
             category,
             currentReps,
-            targetReps: movement?.daily_target || 0,
+            targetReps,
             isLocked: !movement,
             hasMaxEffortPrompt: !!prompt,
             hasMaxEffortToday,
