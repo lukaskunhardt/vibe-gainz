@@ -11,7 +11,7 @@ export interface ExerciseVariation {
 
 export interface FormCues {
   cues: string[];
-  videoUrl: string;
+  videoUrl?: string; // Optional: YouTube video URL
   gifUrl?: string; // Optional: Uploadthing GIF URL for exercise demonstration
 }
 

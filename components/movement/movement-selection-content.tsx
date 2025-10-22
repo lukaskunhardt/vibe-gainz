@@ -263,21 +263,27 @@ export function MovementSelectionContent({ userId, category }: MovementSelection
                         </div>
 
                         {/* GIF/Video */}
-                        <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-                          {formCues?.gifUrl ? (
-                            <Image
-                              src={formCues.gifUrl}
-                              alt={`${exercise.name} demonstration`}
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                              Form video placeholder
-                            </div>
-                          )}
-                        </div>
+                        {(formCues?.videoUrl || formCues?.gifUrl) && (
+                          <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
+                            {formCues?.videoUrl ? (
+                              <iframe
+                                src={formCues.videoUrl}
+                                title={`${exercise.name} demonstration`}
+                                className="h-full w-full"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              />
+                            ) : formCues?.gifUrl ? (
+                              <Image
+                                src={formCues.gifUrl}
+                                alt={`${exercise.name} demonstration`}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            ) : null}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

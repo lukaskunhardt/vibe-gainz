@@ -63,7 +63,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Push back to starting position",
       "Keep body straight throughout",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WALL_PUSHUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WALL_PUSHUP",
     gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbSuaCGUojZRgXyLBUJPFr0zYsI67bT5uOeWjw",
   },
   "incline-pushups": {
@@ -74,7 +74,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Elbows at 45-degree angle",
       "Push back up with control",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_INCLINE_PUSHUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_INCLINE_PUSHUP",
     gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbhddcabSjmaHIqPQVJCFztU8T7ygiZXevYps9",
   },
   "knee-pushups": {
@@ -85,7 +85,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Lower chest to ground (3 seconds)",
       "Full lockout at top",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_KNEE_PUSHUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_KNEE_PUSHUP",
     gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNb8QvtlQNRBUt5IyH9Cfnkes36EdpOcJWrFVh2",
   },
   "regular-pushups": {
@@ -96,7 +96,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Chest touches ground or fist",
       "Maintain plank position (no sagging hips)",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_REGULAR_PUSHUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_REGULAR_PUSHUP",
     gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbKJ8t7ZXdPBlcTFmYA23bzasuJftN4ovRW6VO",
   },
   "weighted-pushups": {
@@ -108,7 +108,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Full range of motion",
       "Avoid shifting weight during movement",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WEIGHTED_PUSHUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WEIGHTED_PUSHUP",
     gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNb1dleMCFMqrxlOcSBybhfNYZHRvUCujDakEJF",
   },
   "archer-pushups": {
@@ -119,7 +119,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "3 second descent on working side",
       "Alternate sides each rep",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ARCHER_PUSHUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ARCHER_PUSHUP",
   },
   "one-arm-pushups": {
     cues: [
@@ -129,7 +129,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Minimize rotation in torso",
       "Full lockout at top",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ONE_ARM_PUSHUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ONE_ARM_PUSHUP",
     gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbBVoZboVcMy92wOI6cZ3KshJAt8PurlkRqzXi",
   },
   "incline-rows": {
@@ -140,7 +140,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Squeeze shoulder blades together",
       "Control descent (3 seconds)",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_INCLINE_ROW",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_INCLINE_ROW",
   },
   "australian-pullups": {
     cues: [
@@ -150,7 +150,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "3 second descent",
       "Full arm extension at bottom",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_AUSTRALIAN_PULLUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_AUSTRALIAN_PULLUP",
   },
   "jumping-pullups": {
     cues: [
@@ -160,7 +160,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Focus on lowering phase",
       "Full dead hang at bottom",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_JUMPING_PULLUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_JUMPING_PULLUP",
     gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbjYFf6HPPwVgza0DFUiObCSYXJym1G5LKxqW3",
   },
   "band-assisted-pullups": {
@@ -171,7 +171,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Control descent (3 seconds)",
       "Use lighter band as you progress",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BAND_ASSISTED_PULLUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BAND_ASSISTED_PULLUP",
   },
   "regular-pullups": {
     cues: [
@@ -181,7 +181,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "No kipping or swinging",
       "Squeeze shoulder blades at top",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_REGULAR_PULLUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_REGULAR_PULLUP",
     gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbXHbzq5ut5heSTVWzrsvMZ1bpmPK3adJfND28",
   },
   "weighted-pullups": {
@@ -192,7 +192,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Full dead hang at bottom",
       "No momentum or swinging",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WEIGHTED_PULLUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WEIGHTED_PULLUP",
   },
   "archer-pullups": {
     cues: [
@@ -202,7 +202,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Chin clears bar on working side",
       "Alternate sides each rep",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ARCHER_PULLUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ARCHER_PULLUP",
   },
   "one-arm-pullups": {
     cues: [
@@ -212,7 +212,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "3 second controlled descent",
       "Full dead hang at bottom",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ONE_ARM_PULLUP",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ONE_ARM_PULLUP",
   },
   "chair-squat": {
     cues: [
@@ -222,7 +222,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "3 second descent",
       "Stand back up with control",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_CHAIR_SQUAT",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_CHAIR_SQUAT",
   },
   "assisted-squats": {
     cues: [
@@ -232,7 +232,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "3 second descent",
       "Thighs parallel to ground",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ASSISTED_SQUAT",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ASSISTED_SQUAT",
   },
   "horse-stance": {
     cues: [
@@ -242,7 +242,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Hold position for time (start with 30 seconds)",
       "Knees track over toes, don't collapse inward",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_HORSE_STANCE",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_HORSE_STANCE",
   },
   "bodyweight-squats": {
     cues: [
@@ -252,7 +252,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Knees track over toes",
       "Full hip extension at top",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BODYWEIGHT_SQUAT",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BODYWEIGHT_SQUAT",
     gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbmC9KDsZH4Fp2xBVRWq1i3UZKJyszN8GCw9M5",
   },
   "bulgarian-split-squat": {
@@ -263,7 +263,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "3 second descent",
       "Drive through front heel to stand",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BULGARIAN_SPLIT_SQUAT",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BULGARIAN_SPLIT_SQUAT",
   },
   "forward-walking-lunges": {
     cues: [
@@ -273,7 +273,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Drive through front heel and step forward with back leg",
       "Continue walking forward, alternating legs",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_FORWARD_WALKING_LUNGE",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_FORWARD_WALKING_LUNGE",
   },
   "backwards-lunges": {
     cues: [
@@ -283,7 +283,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Drive through front heel to return to standing",
       "Alternate legs each rep",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BACKWARDS_LUNGE",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BACKWARDS_LUNGE",
   },
   "jump-squats": {
     cues: [
@@ -293,7 +293,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Immediately descend into next rep",
       "Maintain good squat form throughout",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_JUMP_SQUAT",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_JUMP_SQUAT",
   },
   "pistol-squats": {
     cues: [
@@ -303,7 +303,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Arms forward for balance",
       "Drive through heel to stand",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_PISTOL_SQUAT",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_PISTOL_SQUAT",
   },
   "weighted-squats": {
     cues: [
@@ -313,7 +313,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Thighs parallel or below",
       "Full hip extension at top",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WEIGHTED_SQUAT",
+    // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WEIGHTED_SQUAT",
   },
 };
 
