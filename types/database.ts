@@ -87,3 +87,16 @@ export interface BodyWeight {
   weight_kg: number;
   created_at: string;
 }
+
+export interface DailyUserStats {
+  id: string;
+  user_id: string;
+  date: string; // YYYY-MM-DD
+  push_exercise_id: string | null;
+  pull_exercise_id: string | null;
+  legs_exercise_id: string | null;
+  readiness_score: number | null; // 1-5
+  body_weight_kg: number | null;
+  created_at: string;
+  updated_at: string;
+}

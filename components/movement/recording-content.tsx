@@ -6,23 +6,15 @@ import { createClient } from "@/lib/supabase/client";
 import { MovementCategory, Set as WorkoutSet } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Trophy, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Trophy } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { toast } from "sonner";
 import { calculateInitialDailyTarget, shouldAutoProgress } from "@/lib/utils/calculations";
 import { EnhancedProgressBar } from "@/components/recording/enhanced-progress-bar";
 import { SetLoggingModal } from "@/components/recording/set-logging-modal";
 import { CompletedSetsList } from "@/components/recording/completed-sets-list";
 import { updateSet, deleteSet } from "@/lib/hooks/use-sets";
-import { EXERCISE_VARIATIONS, getExerciseById, FORM_CUES } from "@/lib/constants/exercises";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { EXERCISE_VARIATIONS, getExerciseById } from "@/lib/constants/exercises";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,8 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle, CheckCircle2, ChevronUp, ChevronDown } from "lucide-react";
 
 interface RecordingContentProps {
   userId: string;
@@ -60,8 +50,6 @@ export function RecordingContent({
   const [loading, setLoading] = useState(true); // Initial page load only
   const [isRefreshing, setIsRefreshing] = useState(false); // Post-action data refresh
   const [lastBestSet, setLastBestSet] = useState<number>(0);
-  const [showExerciseSheet, setShowExerciseSheet] = useState(false);
-  const [expandedExercise, setExpandedExercise] = useState<string | null>(null);
   const [yesterdayTarget, setYesterdayTarget] = useState<number | undefined>(undefined);
   const [readinessScore, setReadinessScore] = useState<number | null | undefined>(undefined);
   const [yesterdaySummary, setYesterdaySummary] = useState<
@@ -76,9 +64,6 @@ export function RecordingContent({
   // Delete confirmation dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [setToDelete, setSetToDelete] = useState<string | null>(null);
-
-  const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
-  const exercises = EXERCISE_VARIATIONS[category];
 
   // Calculate recommended sets based on daily target and last best set
   const calculateRecommendedSets = (dailyTarget: number, lastBestSetReps: number): number[] => {
@@ -125,6 +110,7 @@ export function RecordingContent({
       // OPTIMIZATION: Parallelize all queries
       const [
         { data: movementData },
+        { data: dailyStatsData },
         { data: targetData },
         { data: setsData },
         { data: lastSessionSets },
@@ -139,6 +125,13 @@ export function RecordingContent({
           .eq("user_id", userId)
           .eq("category", category)
           .single(),
+        // Fetch today's daily stats (for exercise selection)
+        supabase
+          .from("daily_user_stats")
+          .select(`${category}_exercise_id`)
+          .eq("user_id", userId)
+          .eq("date", todayStr)
+          .maybeSingle(),
         // Fetch current target from history
         supabase
           .from("movement_target_history")
@@ -176,8 +169,8 @@ export function RecordingContent({
           .eq("date", yesterdayStr),
         // Fetch today's readiness score
         supabase
-          .from("readiness")
-          .select("score")
+          .from("daily_user_stats")
+          .select("readiness_score")
           .eq("user_id", userId)
           .eq("date", todayStr)
           .maybeSingle(),
@@ -191,6 +184,19 @@ export function RecordingContent({
           .lte("logged_at", yesterdayEnd.toISOString())
           .order("set_number", { ascending: true }),
       ]);
+
+      // Get today's exercise selection from daily_user_stats
+      const exerciseField = `${category}_exercise_id`;
+      const todayExercise = dailyStatsData
+        ? (dailyStatsData as Record<string, string | null>)[exerciseField as string]
+        : null;
+
+      // If no daily exercise selected, redirect to selection page
+      if (!todayExercise && !isMaxEffort) {
+        toast.error("Please select an exercise for today first.");
+        router.push(`/movement/${category}/select-daily`);
+        return;
+      }
 
       // If no movement exists and we're in max effort mode with initialExercise, allow it
       if (!movementData) {
@@ -212,7 +218,12 @@ export function RecordingContent({
 
       let target = 0;
       if (movementData) {
-        setMovement(movementData);
+        // Use today's exercise selection instead of movement.exercise_variation
+        const effectiveExercise = todayExercise || movementData.exercise_variation;
+        setMovement({
+          ...movementData,
+          exercise_variation: effectiveExercise,
+        });
         target = targetData?.[0]?.target ?? 0;
         setCurrentTarget(target);
       }
@@ -232,7 +243,7 @@ export function RecordingContent({
       setYesterdayTarget(yesterdayTargetValue);
 
       // Process readiness score
-      const readinessValue = readinessData?.score ?? null;
+      const readinessValue = readinessData?.readiness_score ?? null;
       setReadinessScore(readinessValue);
 
       // Calculate yesterday's summary
@@ -307,38 +318,6 @@ export function RecordingContent({
     }
   };
 
-  const handleExerciseChange = async (exerciseId: string) => {
-    if (!movement) return;
-
-    setIsRefreshing(true);
-    try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("movements")
-        .update({
-          exercise_variation: exerciseId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", movement.id);
-
-      if (error) throw error;
-
-      const exerciseName = exercises.find((ex) => ex.id === exerciseId)?.name || exerciseId;
-      toast.success(`Exercise changed to ${exerciseName}`);
-
-      setShowExerciseSheet(false);
-      await loadData(false); // Refresh without showing skeleton
-    } catch (error) {
-      console.error("Error updating exercise:", error);
-      toast.error("Failed to update exercise. Please try again.");
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const toggleExpanded = (exerciseId: string) => {
-    setExpandedExercise(expandedExercise === exerciseId ? null : exerciseId);
-  };
 
   const handleSaveSet = async (reps: number, rpe: number, isMaxEffortSet: boolean) => {
     if (!movement) return;
@@ -626,19 +605,8 @@ export function RecordingContent({
 
             {!isMaxEffort ? (
               <>
-                <span>Log Set /</span>
-                <button
-                  type="button"
-                  onClick={() => setShowExerciseSheet(true)}
-                  onMouseEnter={() => {
-                    // Prefetch the selection page
-                    router.prefetch(`/movement/${category}/select`);
-                  }}
-                  className="group inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-semibold text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                >
-                  {exerciseName}
-                  <Pencil className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
-                </button>
+                <span>Log Set / </span>
+                <span className="font-semibold">{exerciseName}</span>
               </>
             ) : (
               <span>Max Effort Test</span>
@@ -709,187 +677,6 @@ export function RecordingContent({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Exercise Selection Sheet */}
-      <Sheet open={showExerciseSheet} onOpenChange={setShowExerciseSheet}>
-        <SheetContent side="bottom" className="h-[85vh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Change {categoryName} Exercise</SheetTitle>
-            <SheetDescription>
-              Tap an exercise to select it, or expand to view form details.
-            </SheetDescription>
-          </SheetHeader>
-
-          <div className="mt-6 space-y-2 px-4 pb-6">
-            {exercises.map((exercise) => {
-              const isExpanded = expandedExercise === exercise.id;
-              const isCurrent = movement?.exercise_variation === exercise.id;
-              const formCues = FORM_CUES[exercise.id];
-
-              return (
-                <div
-                  key={exercise.id}
-                  className={`rounded-lg border-2 transition-colors ${
-                    isCurrent
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/30"
-                  }`}
-                >
-                  {/* Collapsed Header - Clickable to select */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!isCurrent) {
-                        handleExerciseChange(exercise.id);
-                      }
-                    }}
-                    disabled={isRefreshing}
-                    className="flex w-full items-center justify-between p-4 text-left transition-opacity disabled:opacity-50"
-                  >
-                    <div className="flex flex-1 items-center gap-3">
-                      {/* Small GIF thumbnail if available */}
-                      {formCues?.gifUrl && (
-                        <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-muted">
-                          <Image
-                            src={formCues.gifUrl}
-                            alt=""
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                      )}
-
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{exercise.name}</span>
-                          {isCurrent && (
-                            <Badge variant="default" className="text-xs">
-                              <CheckCircle className="mr-1 h-3 w-3" />
-                              Current
-                            </Badge>
-                          )}
-                        </div>
-                        {!exercise.isStandard && (
-                          <span className="text-xs text-muted-foreground">
-                            Progression exercise
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Expand/Collapse button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleExpanded(exercise.id);
-                      }}
-                      className="ml-2 rounded p-1 hover:bg-muted"
-                      aria-label={isExpanded ? "Collapse details" : "Expand details"}
-                    >
-                      {isExpanded ? (
-                        <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </button>
-                  </button>
-
-                  {/* Expanded Content */}
-                  {isExpanded && (
-                    <div className="space-y-4 border-t px-4 pb-4 pt-4">
-                      {/* Form Cues */}
-                      {formCues && (
-                        <div>
-                          <h4 className="mb-2 text-sm font-semibold">Form Cues</h4>
-                          <ul className="space-y-2">
-                            {formCues.cues.map((cue, index) => (
-                              <li key={index} className="flex items-start gap-2">
-                                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-                                <span className="text-sm text-muted-foreground">{cue}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Progression Info */}
-                      {!exercise.isStandard && (
-                        <div className="rounded-lg border border-primary/50 bg-primary/5 p-3">
-                          <h4 className="mb-1 text-sm font-semibold">Progression Path</h4>
-                          <p className="mb-2 text-xs text-muted-foreground">
-                            When you reach 20+ reps on your max effort test, you&apos;ll
-                            automatically progress to the next difficulty level.
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {exercises.map((ex) => (
-                              <div
-                                key={ex.id}
-                                className={`rounded px-2 py-0.5 text-xs ${
-                                  ex.id === exercise.id
-                                    ? "bg-primary font-semibold text-primary-foreground"
-                                    : ex.difficulty < exercise.difficulty
-                                      ? "bg-green-500/10 text-green-700 dark:text-green-400"
-                                      : "bg-muted text-muted-foreground"
-                                }`}
-                              >
-                                {ex.name}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Training Tips */}
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-semibold">Training Tips</h4>
-                        <div className="space-y-2 text-xs text-muted-foreground">
-                          <p>
-                            <strong>Focus on the Eccentric:</strong> The lowering phase is crucial
-                            for building strength. Aim for a 3-second controlled descent.
-                          </p>
-                          <p>
-                            <strong>Optimal RPE Range:</strong> For most sets, aim for RPE 6-8. This
-                            provides enough stimulus while minimizing fatigue.
-                          </p>
-                          <p>
-                            <strong>Avoid Training to Failure:</strong> Reserve RPE 10 for max
-                            effort tests only. Regular training to failure limits weekly volume.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* GIF/Video */}
-                      {(formCues?.videoUrl || formCues?.gifUrl) && (
-                        <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
-                          {formCues?.videoUrl ? (
-                            <iframe
-                              src={formCues.videoUrl}
-                              title={`${exercise.name} demonstration`}
-                              className="h-full w-full"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                            />
-                          ) : formCues?.gifUrl ? (
-                            <Image
-                              src={formCues.gifUrl}
-                              alt={`${exercise.name} demonstration`}
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

@@ -136,18 +136,29 @@ export function ReadinessContent({ userId, date }: ReadinessContentProps) {
     try {
       const supabase = createClient();
 
-      // Save readiness score
-      await supabase
-        .from("readiness")
-        .upsert({ user_id: userId, date, score: selected }, { onConflict: "user_id,date" });
+      // Prepare data for daily_user_stats
+      const dailyStatsData: {
+        user_id: string;
+        date: string;
+        readiness_score: number;
+        body_weight_kg?: number;
+        updated_at: string;
+      } = {
+        user_id: userId,
+        date,
+        readiness_score: selected,
+        updated_at: new Date().toISOString(),
+      };
 
-      // Save body weight if provided
+      // Add body weight if provided
       if (bodyWeight && !isNaN(parseFloat(bodyWeight))) {
-        const weightKg = parseFloat(bodyWeight);
-        await supabase
-          .from("body_weight")
-          .upsert({ user_id: userId, date, weight_kg: weightKg }, { onConflict: "user_id,date" });
+        dailyStatsData.body_weight_kg = parseFloat(bodyWeight);
       }
+
+      // Save to daily_user_stats table
+      await supabase
+        .from("daily_user_stats")
+        .upsert(dailyStatsData, { onConflict: "user_id,date" });
 
       router.replace("/dashboard");
     } finally {

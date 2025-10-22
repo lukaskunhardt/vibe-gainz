@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Lock, Trophy, Plus, CheckCircle, Flame } from "lucide-react";
 import { format, startOfDay, endOfDay, parseISO, isSameDay, addDays, subDays } from "date-fns";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MaxEffortPromptModal } from "./max-effort-prompt-modal";
 import { EXERCISE_VARIATIONS, FORM_CUES } from "@/lib/constants/exercises";
 import { StatsContent } from "@/components/stats/stats-content";
@@ -279,8 +279,8 @@ export function DashboardContent({ userId }: DashboardContentProps) {
           .lte("logged_at", yesterdayEnd.toISOString())
           .order("logged_at", { ascending: true }),
         supabase
-          .from("readiness")
-          .select("score")
+          .from("daily_user_stats")
+          .select("readiness_score")
           .eq("user_id", userId)
           .eq(
             "date",
@@ -329,7 +329,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
         const currentTarget = targetResults[i]?.data?.[0]?.target ?? 0;
 
         const capOk = isCapRelaxed(ySets, d2Sets);
-        const readinessScore = readiness?.score ?? 3;
+        const readinessScore = readiness?.readiness_score ?? 3;
         const suggestion = suggestDailyTargetDelta(
           ySets,
           currentTarget,
@@ -499,6 +499,8 @@ function MovementCard({
   streakPrevDays,
   isDesktop,
 }: MovementCardProps) {
+  const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
   const percentage = targetReps > 0 ? Math.min((currentReps / targetReps) * 100, 100) : 0;
   const isComplete = currentReps >= targetReps;
 
@@ -507,6 +509,41 @@ function MovementCard({
     ? EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name ||
       movement.exercise_variation
     : "";
+
+  const handleCardClick = async () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
+
+    try {
+      const supabase = createClient();
+      const today = format(new Date(), "yyyy-MM-dd");
+      const exerciseField = `${category}_exercise_id`;
+
+      // Check if exercise has been selected for today
+      const { data: dailyStats } = await supabase
+        .from("daily_user_stats")
+        .select(`${exerciseField}`)
+        .eq("user_id", movement?.user_id)
+        .eq("date", today)
+        .single();
+
+      const hasSelectedExercise = dailyStats
+        ? (dailyStats as unknown as Record<string, string | null>)[exerciseField as string]
+        : null;
+
+      if (hasSelectedExercise) {
+        // Exercise already selected, go to recording
+        router.push(`/movement/${category}/record`);
+      } else {
+        // No exercise selected, go to selection page
+        router.push(`/movement/${category}/select-daily`);
+      }
+    } catch (error) {
+      console.error("Error checking daily exercise selection:", error);
+      // Fallback to selection page
+      router.push(`/movement/${category}/select-daily`);
+    }
+  };
 
   if (isLocked) {
     return (
@@ -542,7 +579,11 @@ function MovementCard({
     : undefined;
 
   return (
-    <Link href={`/movement/${category}/record`} prefetch={true} className="block">
+    <button
+      onClick={handleCardClick}
+      disabled={isNavigating}
+      className="block w-full text-left transition-opacity disabled:opacity-50"
+    >
       <Card
         className={`group relative cursor-pointer overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg ${
           hasMaxEffortToday
@@ -674,6 +715,6 @@ function MovementCard({
           </div>
         </CardContent>
       </Card>
-    </Link>
+    </button>
   );
 }

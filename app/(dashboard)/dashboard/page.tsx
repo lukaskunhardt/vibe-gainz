@@ -20,14 +20,14 @@ export default async function DashboardPage() {
   const d = String(today.getDate()).padStart(2, "0");
   const dateStr = `${y}-${m}-${d}`;
 
-  const { data: readiness } = await supabase
-    .from("readiness")
-    .select("id")
+  const { data: dailyStats } = await supabase
+    .from("daily_user_stats")
+    .select("readiness_score")
     .eq("user_id", user.id)
     .eq("date", dateStr)
-    .single();
+    .maybeSingle();
 
-  if (!readiness) {
+  if (!dailyStats || dailyStats.readiness_score === null) {
     redirect("/readiness");
   }
 
