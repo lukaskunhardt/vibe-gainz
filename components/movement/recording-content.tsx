@@ -50,11 +50,6 @@ export function RecordingContent({
   const [loading, setLoading] = useState(true); // Initial page load only
   const [isRefreshing, setIsRefreshing] = useState(false); // Post-action data refresh
   const [lastBestSet, setLastBestSet] = useState<number>(0);
-  const [yesterdayTarget, setYesterdayTarget] = useState<number | undefined>(undefined);
-  const [readinessScore, setReadinessScore] = useState<number | null | undefined>(undefined);
-  const [yesterdaySummary, setYesterdaySummary] = useState<
-    { setsCount: number; avgRPE: number; reached: boolean } | null | undefined
-  >(undefined);
 
   // Modal state
   const [showSetModal, setShowSetModal] = useState(false);
@@ -98,15 +93,6 @@ export function RecordingContent({
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
 
-      // Calculate yesterday
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
-      const yesterdayStart = new Date(yesterday);
-      yesterdayStart.setHours(0, 0, 0, 0);
-      const yesterdayEnd = new Date(yesterday);
-      yesterdayEnd.setHours(23, 59, 59, 999);
-
       // OPTIMIZATION: Parallelize all queries
       const [
         { data: movementData },
@@ -114,9 +100,6 @@ export function RecordingContent({
         { data: targetData },
         { data: setsData },
         { data: lastSessionSets },
-        { data: yesterdayTargetData },
-        { data: readinessData },
-        { data: yesterdaySetsData },
       ] = await Promise.all([
         // Fetch movement
         supabase
@@ -160,29 +143,6 @@ export function RecordingContent({
           .lt("logged_at", todayStart.toISOString())
           .order("logged_at", { ascending: false })
           .limit(20),
-        // Fetch yesterday's target from history
-        supabase
-          .from("movement_target_history")
-          .select("target")
-          .eq("user_id", userId)
-          .eq("category", category)
-          .eq("date", yesterdayStr),
-        // Fetch today's readiness score
-        supabase
-          .from("daily_user_stats")
-          .select("readiness_score")
-          .eq("user_id", userId)
-          .eq("date", todayStr)
-          .maybeSingle(),
-        // Fetch yesterday's sets for summary calculation
-        supabase
-          .from("sets")
-          .select("reps, rpe, is_max_effort, set_number")
-          .eq("user_id", userId)
-          .eq("category", category)
-          .gte("logged_at", yesterdayStart.toISOString())
-          .lte("logged_at", yesterdayEnd.toISOString())
-          .order("set_number", { ascending: true }),
       ]);
 
       // Get today's exercise selection from daily_user_stats
@@ -237,33 +197,6 @@ export function RecordingContent({
           ? Math.floor(movementData.max_effort_reps * 0.8)
           : 0;
       setLastBestSet(calculatedLastBestSet);
-
-      // Process yesterday's target
-      const yesterdayTargetValue = yesterdayTargetData?.[0]?.target;
-      setYesterdayTarget(yesterdayTargetValue);
-
-      // Process readiness score
-      const readinessValue = readinessData?.readiness_score ?? null;
-      setReadinessScore(readinessValue);
-
-      // Calculate yesterday's summary
-      if (yesterdaySetsData && yesterdaySetsData.length > 0 && yesterdayTargetValue !== undefined) {
-        const nonMaxSets = yesterdaySetsData.filter((s) => !s.is_max_effort);
-        if (nonMaxSets.length > 0) {
-          const totalReps = nonMaxSets.reduce((sum, s) => sum + s.reps, 0);
-          const avgRPE = nonMaxSets.reduce((sum, s) => sum + s.rpe, 0) / nonMaxSets.length;
-          const reached = totalReps >= yesterdayTargetValue;
-          setYesterdaySummary({
-            setsCount: nonMaxSets.length,
-            avgRPE,
-            reached,
-          });
-        } else {
-          setYesterdaySummary(null);
-        }
-      } else {
-        setYesterdaySummary(null);
-      }
 
       // No need to prefill reps - modal will handle this
     } catch (error) {
@@ -604,7 +537,7 @@ export function RecordingContent({
 
             {!isMaxEffort ? (
               <>
-                <span>Log Set / </span>
+                <span>Log Set: </span>
                 <span className="font-semibold">{exerciseName}</span>
               </>
             ) : (
@@ -619,12 +552,7 @@ export function RecordingContent({
             <EnhancedProgressBar
               totalTarget={currentTarget}
               completedSets={todaySets}
-              plannedSets={recommendedSets}
               showAnimation={currentTotal >= currentTarget}
-              yesterdayTarget={yesterdayTarget}
-              readinessScore={readinessScore}
-              yesterdaySummary={yesterdaySummary}
-              isLoadingContext={yesterdayTarget === undefined}
             />
           )}
 
