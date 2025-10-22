@@ -89,16 +89,6 @@ export function SetLoggingModal({
 
   const isValid = reps > 0 && (isMaxEffort || rpe > 0);
 
-  // Calculate preset rep values based on nextPlannedReps
-  const calculatePresets = (planned: number): number[] => {
-    if (planned === 0) return [5, 10, 15];
-    const lower = Math.max(1, planned - 2);
-    const higher = planned + 2;
-    return [lower, planned, higher];
-  };
-
-  const presets = calculatePresets(nextPlannedReps);
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -123,29 +113,19 @@ export function SetLoggingModal({
 
               {/* Cartoony Rep Display Container */}
               <div className="rounded-2xl border-4 border-foreground/80 bg-muted/40 p-6 shadow-[0_4px_0_0_rgba(0,0,0,0.1)]">
-                {/* Quick-tap preset buttons */}
-                {mode === "create" && !isMaxEffort && (
-                  <div className="mb-4 flex justify-center gap-2">
-                    {presets.map((preset) => (
-                      <Button
-                        key={preset}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setReps(preset)}
-                        className={`border-3 rounded-full px-4 py-2 font-bold transition-all hover:scale-105 ${
-                          reps === preset
-                            ? "border-foreground bg-foreground text-background shadow-[0_2px_0_0_rgba(0,0,0,0.2)]"
-                            : "border-foreground/40 hover:border-foreground/60"
-                        }`}
-                      >
-                        {preset}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-
                 {/* Manual adjustment controls */}
-                <div className="flex items-center justify-center gap-4">
+                <div className="flex items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-3 h-14 w-14 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none disabled:opacity-50"
+                    onClick={() => setReps(Math.max(0, reps - 10))}
+                    disabled={reps <= 0}
+                    title="Subtract 10"
+                  >
+                    <span className="text-lg font-bold">-10</span>
+                  </Button>
+
                   <Button
                     variant="outline"
                     size="icon"
@@ -172,6 +152,16 @@ export function SetLoggingModal({
                     onClick={() => setReps(reps + 1)}
                   >
                     <Plus className="h-6 w-6" />
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-3 h-14 w-14 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none"
+                    onClick={() => setReps(reps + 10)}
+                    title="Add 10"
+                  >
+                    <span className="text-lg font-bold">+10</span>
                   </Button>
                 </div>
               </div>

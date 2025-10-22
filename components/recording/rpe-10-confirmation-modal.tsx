@@ -34,6 +34,14 @@ export function RPE10ConfirmationModal({
           </DialogDescription>
         </DialogHeader>
 
+        {/* Tip box with cartoony styling */}
+        <div className="border-3 rounded-xl border-foreground/20 bg-muted/40 p-4 shadow-[0_2px_0_0_rgba(0,0,0,0.05)]">
+          <p className="text-sm text-muted-foreground">
+            <strong className="font-bold">Tip:</strong> For optimal gains with minimal fatigue, aim
+            for RPE 6-8. Training to failure (RPE 10) should be reserved for max effort tests.
+          </p>
+        </div>
+
         <div className="space-y-3">
           <Button
             variant="outline"
@@ -72,12 +80,6 @@ export function RPE10ConfirmationModal({
               <div className="text-xs text-muted-foreground">Select a different RPE value</div>
             </div>
           </Button>
-        </div>
-
-        <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-          <strong>Note:</strong> Training to failure (RPE 10) causes significantly more fatigue than
-          RPE 8, with only marginal increases in muscle stimulus. Reserve RPE 10 for max effort
-          tests.
         </div>
       </DialogContent>
     </Dialog>
