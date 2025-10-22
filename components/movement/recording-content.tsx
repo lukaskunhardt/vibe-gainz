@@ -448,54 +448,26 @@ export function RecordingContent({
           <CardContent className="space-y-6">
             {/* Progress bar skeleton (for regular sets) */}
             {!isMaxEffort && (
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="h-4 w-32 animate-pulse rounded bg-muted"></div>
-                  <div className="h-4 w-20 animate-pulse rounded bg-muted"></div>
+              <div className="space-y-3">
+                <div>
+                  <div className="h-4 w-24 animate-pulse rounded bg-muted"></div>
+                  <div className="mt-1 h-3 w-full animate-pulse rounded bg-muted"></div>
                 </div>
-                <div className="h-2 w-full animate-pulse rounded-full bg-muted"></div>
+                <div className="h-14 w-full animate-pulse rounded-2xl border-4 border-muted bg-muted/20"></div>
               </div>
             )}
 
-            {/* Recommended sets skeleton (for regular sets) */}
-            {!isMaxEffort && (
-              <div>
-                <div className="mb-2 h-4 w-36 animate-pulse rounded bg-muted"></div>
-                <div className="mb-3 h-3 w-full animate-pulse rounded bg-muted"></div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div
-                      key={i}
-                      className="h-24 animate-pulse rounded-lg border-2 border-dashed border-muted bg-muted/20"
-                    ></div>
-                  ))}
+            {/* Completed sets list skeleton */}
+            <div className="space-y-2">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="h-5 w-32 animate-pulse rounded bg-muted"></div>
+                  <div className="h-8 w-16 animate-pulse rounded bg-muted"></div>
                 </div>
-              </div>
-            )}
-
-            {/* Rep counter skeleton */}
-            <div className="space-y-3">
-              <div className="h-4 w-16 animate-pulse rounded bg-muted"></div>
-              <div className="flex items-center justify-center gap-4">
-                <div className="h-16 w-16 animate-pulse rounded-md bg-muted"></div>
-                <div className="h-20 w-32 animate-pulse rounded bg-muted"></div>
-                <div className="h-16 w-16 animate-pulse rounded-md bg-muted"></div>
-              </div>
+              ))}
             </div>
 
-            {/* RPE selector skeleton (for regular sets) */}
-            {!isMaxEffort && (
-              <div className="space-y-2">
-                <div className="h-4 w-24 animate-pulse rounded bg-muted"></div>
-                <div className="grid grid-cols-5 gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-                    <div key={i} className="h-16 animate-pulse rounded-lg bg-muted"></div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Save button skeleton */}
+            {/* Log Set button skeleton */}
             <div className="h-12 w-full animate-pulse rounded-md bg-muted"></div>
           </CardContent>
         </Card>
