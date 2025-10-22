@@ -6,12 +6,12 @@ import { Minus, Plus, Save } from "lucide-react";
 import { RPESelector } from "@/components/recording/rpe-selector";
 import { RPE10ConfirmationModal } from "@/components/recording/rpe-10-confirmation-modal";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Set as WorkoutSet } from "@/types";
 
 interface SetLoggingModalProps {
@@ -89,55 +89,108 @@ export function SetLoggingModal({
 
   const isValid = reps > 0 && (isMaxEffort || rpe > 0);
 
+  // Calculate preset rep values based on nextPlannedReps
+  const calculatePresets = (planned: number): number[] => {
+    if (planned === 0) return [5, 10, 15];
+    const lower = Math.max(1, planned - 2);
+    const higher = planned + 2;
+    return [lower, planned, higher];
+  };
+
+  const presets = calculatePresets(nextPlannedReps);
+
   return (
     <>
-      <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent side="bottom" className="h-auto px-6">
-          <SheetHeader>
-            <SheetTitle>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
               {mode === "create" ? (isMaxEffort ? "Max Effort Test" : "Log Set") : "Edit Set"}
-            </SheetTitle>
-            <SheetDescription>
+            </DialogTitle>
+            <DialogDescription>
               {mode === "create"
                 ? "Enter the reps you completed and rate the difficulty"
                 : "Update the reps and RPE for this set"}
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="mt-6 space-y-6 pb-6">
-            {/* Rep Counter */}
+          <div className="space-y-6">
+            {/* Rep Counter Section */}
             <div className="space-y-3">
-              <label className="text-sm font-medium">
+              <label className="text-sm font-bold">
                 {isMaxEffort ? "Max Effort Reps" : "Reps"}
               </label>
-              <div className="flex items-center justify-center gap-4">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-16 w-16"
-                  onClick={() => setReps(Math.max(0, reps - 1))}
-                  disabled={reps <= 0}
-                >
-                  <Minus className="h-6 w-6" />
-                </Button>
-                <div className="w-32 text-center text-6xl font-bold">{reps}</div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-16 w-16"
-                  onClick={() => setReps(reps + 1)}
-                >
-                  <Plus className="h-6 w-6" />
-                </Button>
+
+              {/* Cartoony Rep Display Container */}
+              <div className="rounded-2xl border-4 border-foreground/80 bg-muted/40 p-6 shadow-[0_4px_0_0_rgba(0,0,0,0.1)]">
+                {/* Quick-tap preset buttons */}
+                {mode === "create" && !isMaxEffort && (
+                  <div className="mb-4 flex justify-center gap-2">
+                    {presets.map((preset) => (
+                      <Button
+                        key={preset}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReps(preset)}
+                        className={`border-3 rounded-full px-4 py-2 font-bold transition-all hover:scale-105 ${
+                          reps === preset
+                            ? "border-foreground bg-foreground text-background shadow-[0_2px_0_0_rgba(0,0,0,0.2)]"
+                            : "border-foreground/40 hover:border-foreground/60"
+                        }`}
+                      >
+                        {preset}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Manual adjustment controls */}
+                <div className="flex items-center justify-center gap-4">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-3 h-14 w-14 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none disabled:opacity-50"
+                    onClick={() => setReps(Math.max(0, reps - 1))}
+                    disabled={reps <= 0}
+                  >
+                    <Minus className="h-6 w-6" />
+                  </Button>
+
+                  {/* Direct input - tap to edit */}
+                  <input
+                    type="number"
+                    value={reps}
+                    onChange={(e) => setReps(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="border-3 w-28 rounded-xl border-foreground/40 bg-background p-2 text-center text-5xl font-bold shadow-inner focus:border-foreground focus:outline-none"
+                    min="0"
+                  />
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-3 h-14 w-14 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none"
+                    onClick={() => setReps(reps + 1)}
+                  >
+                    <Plus className="h-6 w-6" />
+                  </Button>
+                </div>
               </div>
             </div>
+
+            {/* Visual divider */}
+            {!isMaxEffort && <div className="border-t-2 border-dashed border-foreground/20"></div>}
 
             {/* RPE Selector */}
             {!isMaxEffort && <RPESelector value={rpe} onChange={setRPE} />}
 
             {/* Save Button */}
-            <Button onClick={handleSave} disabled={saving || !isValid} className="w-full" size="lg">
-              <Save className="mr-2 h-4 w-4" />
+            <Button
+              onClick={handleSave}
+              disabled={saving || !isValid}
+              className="border-3 w-full rounded-xl border-foreground/20 shadow-[0_4px_0_0_rgba(0,0,0,0.15)] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_0_rgba(0,0,0,0.15)] active:translate-y-1 active:shadow-none disabled:opacity-50"
+              size="lg"
+            >
+              <Save className="mr-2 h-5 w-5" />
               {saving
                 ? "Saving..."
                 : mode === "create"
@@ -147,8 +200,8 @@ export function SetLoggingModal({
                   : "Update Set"}
             </Button>
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* RPE 10 Confirmation Modal */}
       {showRPE10Modal && (
