@@ -33,12 +33,14 @@ export const EXERCISE_VARIATIONS: Record<MovementCategory, ExerciseVariation[]> 
   legs: [
     { id: "chair-squat", name: "Chair Squat", difficulty: 1, isStandard: false },
     { id: "assisted-squats", name: "Assisted Squats", difficulty: 2, isStandard: false },
-    { id: "bodyweight-squats", name: "Bodyweight Squats", difficulty: 3, isStandard: true },
-    { id: "bulgarian-split-squat", name: "Bulgarian Split Squat", difficulty: 4, isStandard: true },
-    { id: "lunge", name: "Lunge", difficulty: 5, isStandard: true },
-    { id: "jump-squats", name: "Jump Squats", difficulty: 6, isStandard: true },
-    { id: "pistol-squats", name: "Pistol Squats", difficulty: 7, isStandard: true },
-    { id: "weighted-squats", name: "Weighted Squats", difficulty: 8, isStandard: true },
+    { id: "horse-stance", name: "Horse Stance", difficulty: 3, isStandard: false },
+    { id: "bodyweight-squats", name: "Bodyweight Squats", difficulty: 4, isStandard: true },
+    { id: "bulgarian-split-squat", name: "Bulgarian Split Squat", difficulty: 5, isStandard: true },
+    { id: "forward-walking-lunges", name: "Forward Walking Lunges", difficulty: 6, isStandard: true },
+    { id: "backwards-lunges", name: "Backwards Lunges", difficulty: 7, isStandard: true },
+    { id: "jump-squats", name: "Jump Squats", difficulty: 8, isStandard: true },
+    { id: "pistol-squats", name: "Pistol Squats", difficulty: 9, isStandard: true },
+    { id: "weighted-squats", name: "Weighted Squats", difficulty: 10, isStandard: true },
   ],
 };
 
@@ -232,6 +234,16 @@ export const FORM_CUES: Record<string, FormCues> = {
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ASSISTED_SQUAT",
   },
+  "horse-stance": {
+    cues: [
+      "Feet wider than shoulder-width, toes pointing forward or slightly out",
+      "Lower until thighs are parallel to ground",
+      "Keep back straight and chest up",
+      "Hold position for time (start with 30 seconds)",
+      "Knees track over toes, don't collapse inward",
+    ],
+    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_HORSE_STANCE",
+  },
   "bodyweight-squats": {
     cues: [
       "Feet shoulder-width apart",
@@ -253,15 +265,25 @@ export const FORM_CUES: Record<string, FormCues> = {
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BULGARIAN_SPLIT_SQUAT",
   },
-  lunge: {
+  "forward-walking-lunges": {
     cues: [
       "Step forward into lunge position",
       "Lower back knee toward ground (3 seconds)",
       "Front knee stays over ankle",
-      "Drive through front heel to return",
+      "Drive through front heel and step forward with back leg",
+      "Continue walking forward, alternating legs",
+    ],
+    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_FORWARD_WALKING_LUNGE",
+  },
+  "backwards-lunges": {
+    cues: [
+      "Step backwards into lunge position",
+      "Lower back knee toward ground (3 seconds)",
+      "Front knee stays over ankle",
+      "Drive through front heel to return to standing",
       "Alternate legs each rep",
     ],
-    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_LUNGE",
+    videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BACKWARDS_LUNGE",
   },
   "jump-squats": {
     cues: [
