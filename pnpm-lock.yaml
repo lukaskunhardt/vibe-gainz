@@ -7,6 +7,9 @@ settings:
 importers:
   .:
     dependencies:
+      "@number-flow/react":
+        specifier: ^0.5.10
+        version: 0.5.10(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       "@radix-ui/react-alert-dialog":
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -610,6 +613,15 @@ packages:
         integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==,
       }
     engines: { node: ">=12.4.0" }
+
+  "@number-flow/react@0.5.10":
+    resolution:
+      {
+        integrity: sha512-a8Wh5eNITn7Km4xbddAH7QH8eNmnduR6k34ER1hkHSGO4H2yU1DDnuAWLQM99vciGInFODemSc0tdxrXkJEpbA==,
+      }
+    peerDependencies:
+      react: ^18 || ^19
+      react-dom: ^18 || ^19
 
   "@pkgjs/parseargs@0.11.0":
     resolution:
@@ -2370,6 +2382,12 @@ packages:
       jiti:
         optional: true
 
+  esm-env@1.2.2:
+    resolution:
+      {
+        integrity: sha512-Epxrv+Nr/CaL4ZcFGPJIYLWFom+YeV1DqMLHJoEd9SYRxNbaFruBwfEX/kkHUJf55j2+TUbmDcmuilbP1TmXHA==,
+      }
+
   espree@10.4.0:
     resolution:
       {
@@ -3213,6 +3231,12 @@ packages:
         integrity: sha512-bdok/XvKII3nUpklnV6P2hxtMNrCboOjAcyBuQnWEhO665FwrSNRxU+AqpsyvO6LgGYPspN+lu5CLtw4jPRKNA==,
       }
     engines: { node: ">=0.10.0" }
+
+  number-flow@0.5.8:
+    resolution:
+      {
+        integrity: sha512-FPr1DumWyGi5Nucoug14bC6xEz70A1TnhgSHhKyfqjgji2SOTz+iLJxKtv37N5JyJbteGYCm6NQ9p1O4KZ7iiA==,
+      }
 
   object-assign@4.1.1:
     resolution:
@@ -4560,6 +4584,13 @@ snapshots:
 
   "@nolyfill/is-core-module@1.0.39": {}
 
+  "@number-flow/react@0.5.10(react-dom@19.2.0(react@19.2.0))(react@19.2.0)":
+    dependencies:
+      esm-env: 1.2.2
+      number-flow: 0.5.8
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
+
   "@pkgjs/parseargs@0.11.0":
     optional: true
 
@@ -5857,6 +5888,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  esm-env@1.2.2: {}
+
   espree@10.4.0:
     dependencies:
       acorn: 8.15.0
@@ -6324,6 +6357,10 @@ snapshots:
   normalize-path@3.0.0: {}
 
   normalize-range@0.1.2: {}
+
+  number-flow@0.5.8:
+    dependencies:
+      esm-env: 1.2.2
 
   object-assign@4.1.1: {}
 

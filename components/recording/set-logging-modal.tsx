@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
 import { RPESelector } from "@/components/recording/rpe-selector";
 import { RPE10ConfirmationModal } from "@/components/recording/rpe-10-confirmation-modal";
+import NumberFlow from "@number-flow/react";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ export function SetLoggingModal({
   const [rpe, setRPE] = useState(0);
   const [saving, setSaving] = useState(false);
   const [showRPE10Modal, setShowRPE10Modal] = useState(false);
+  const [isEditingReps, setIsEditingReps] = useState(false);
 
   // Initialize form when modal opens or props change
   useEffect(() => {
@@ -48,6 +50,7 @@ export function SetLoggingModal({
         setReps(nextPlannedReps);
         setRPE(7);
       }
+      setIsEditingReps(false);
     }
   }, [isOpen, mode, existingSet, nextPlannedReps]);
 
@@ -137,14 +140,32 @@ export function SetLoggingModal({
                     <span className="text-lg font-bold">-1</span>
                   </Button>
 
-                  {/* Direct input - tap to edit */}
-                  <input
-                    type="number"
-                    value={reps}
-                    onChange={(e) => setReps(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="border-3 w-28 rounded-xl border-foreground/40 bg-background p-2 text-center text-5xl font-bold shadow-inner focus:border-foreground focus:outline-none"
-                    min="0"
-                  />
+                  {/* Animated number display or input */}
+                  {isEditingReps ? (
+                    <input
+                      type="number"
+                      value={reps}
+                      onChange={(e) => setReps(Math.max(0, parseInt(e.target.value) || 0))}
+                      onBlur={() => setIsEditingReps(false)}
+                      autoFocus
+                      className="border-3 w-28 rounded-xl border-foreground/40 bg-background p-2 text-center text-5xl font-bold shadow-inner focus:border-foreground focus:outline-none"
+                      min="0"
+                    />
+                  ) : (
+                    <div
+                      onClick={() => setIsEditingReps(true)}
+                      className="border-3 relative w-28 cursor-pointer rounded-xl border-foreground/40 bg-background px-2 py-3 text-center shadow-inner transition-colors hover:border-foreground/60"
+                      title="Click to type a number"
+                    >
+                      <NumberFlow
+                        value={reps}
+                        className="text-5xl font-bold tabular-nums"
+                        transformTiming={{ duration: 400, easing: "ease-out" }}
+                        spinTiming={{ duration: 400, easing: "ease-out" }}
+                        opacityTiming={{ duration: 200, easing: "ease-out" }}
+                      />
+                    </div>
+                  )}
 
                   <Button
                     variant="outline"
