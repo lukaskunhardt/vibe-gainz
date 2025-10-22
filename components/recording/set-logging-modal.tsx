@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { RPESelector } from "@/components/recording/rpe-selector";
 import { RPE10ConfirmationModal } from "@/components/recording/rpe-10-confirmation-modal";
 import {
@@ -46,7 +46,7 @@ export function SetLoggingModal({
         setRPE(existingSet.rpe);
       } else if (mode === "create") {
         setReps(nextPlannedReps);
-        setRPE(0);
+        setRPE(7);
       }
     }
   }, [isOpen, mode, existingSet, nextPlannedReps]);
@@ -132,8 +132,9 @@ export function SetLoggingModal({
                     className="border-3 h-14 w-14 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none disabled:opacity-50"
                     onClick={() => setReps(Math.max(0, reps - 1))}
                     disabled={reps <= 0}
+                    title="Subtract 1"
                   >
-                    <Minus className="h-6 w-6" />
+                    <span className="text-lg font-bold">-1</span>
                   </Button>
 
                   {/* Direct input - tap to edit */}
@@ -150,8 +151,9 @@ export function SetLoggingModal({
                     size="icon"
                     className="border-3 h-14 w-14 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none"
                     onClick={() => setReps(reps + 1)}
+                    title="Add 1"
                   >
-                    <Plus className="h-6 w-6" />
+                    <span className="text-lg font-bold">+1</span>
                   </Button>
 
                   <Button
