@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { MovementCategory, Movement, Set as WorkoutSet, BodyWeight } from "@/types";
+import { MovementCategory, Movement, Set as WorkoutSet } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -93,6 +93,7 @@ interface SingleCategoryChartProps {
   showTarget: boolean;
   showTrend: boolean;
   showBodyWeight: boolean;
+  recentExercise: string | null;
 }
 
 function SingleCategoryChart({
@@ -107,15 +108,18 @@ function SingleCategoryChart({
   showTarget,
   showTrend,
   showBodyWeight,
+  recentExercise,
 }: SingleCategoryChartProps) {
   const [selectedExercises, setSelectedExercises] = useState<string[]>(() =>
-    EXERCISE_VARIATIONS[category].map((ex) => ex.id)
+    recentExercise ? [recentExercise] : EXERCISE_VARIATIONS[category].map((ex) => ex.id)
   );
 
-  // Reset selected exercises when category changes
+  // Reset selected exercises when category or recent exercise changes
   useEffect(() => {
-    setSelectedExercises(EXERCISE_VARIATIONS[category].map((ex) => ex.id));
-  }, [category]);
+    setSelectedExercises(
+      recentExercise ? [recentExercise] : EXERCISE_VARIATIONS[category].map((ex) => ex.id)
+    );
+  }, [category, recentExercise]);
 
   const exerciseOptions = useMemo(() => EXERCISE_VARIATIONS[category], [category]);
 
@@ -430,8 +434,17 @@ function SingleCategoryChart({
   }, [chartDataWithTrend, hasBodyWeightLine]);
 
   const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
-  const chartTitle =
-    viewMode === "stacked" ? `Total ${categoryName} Volume` : `Max ${categoryName} Reps`;
+  const viewLabel = viewMode === "stacked" ? "Volume" : "Max Reps";
+
+  let chartTitle = `${viewLabel}: ${categoryName}`;
+  if (effectiveSelection.length > 0 && effectiveSelection.length < exerciseOptions.length) {
+    const names = effectiveSelection
+      .map((id) => exerciseOptions.find((ex) => ex.id === id)?.name)
+      .filter(Boolean)
+      .slice(0, 2);
+    const extra = effectiveSelection.length > 2 ? ` +${effectiveSelection.length - 2}` : "";
+    chartTitle = `${viewLabel}: ${names.join(", ")}${extra}`;
+  }
 
   return (
     <Card>
@@ -585,6 +598,11 @@ export function StatsContent({ userId }: StatsContentProps) {
   const [showTarget, setShowTarget] = useState(false);
   const [showTrend, setShowTrend] = useState(true);
   const [showBodyWeight, setShowBodyWeight] = useState(false);
+  const [recentExercises, setRecentExercises] = useState<Record<MovementCategory, string | null>>({
+    push: null,
+    pull: null,
+    legs: null,
+  });
   const isDesktop = useIsDesktop();
 
   // Handle mutually exclusive readiness/body weight toggles
@@ -604,18 +622,23 @@ export function StatsContent({ userId }: StatsContentProps) {
 
   const processStats = (
     sets: WorkoutSet[],
-    readiness: Array<{ date: string; score: number }>,
-    targets: Array<{ category: MovementCategory; date: string; target: number }>,
-    bodyWeight: BodyWeight[]
+    dailyStats: Array<{
+      date: string;
+      readiness_score: number | null;
+      body_weight_kg: number | null;
+    }>,
+    targets: Array<{ category: MovementCategory; date: string; target: number }>
   ): StatsData => {
     const readinessByDate: Record<string, number> = {};
-    readiness.forEach((r) => {
-      readinessByDate[r.date] = r.score;
-    });
-
     const bodyWeightByDate: Record<string, number> = {};
-    bodyWeight.forEach((bw) => {
-      bodyWeightByDate[bw.date] = bw.weight_kg;
+
+    dailyStats.forEach((stat) => {
+      if (stat.readiness_score) {
+        readinessByDate[stat.date] = stat.readiness_score;
+      }
+      if (stat.body_weight_kg) {
+        bodyWeightByDate[stat.date] = stat.body_weight_kg;
+      }
     });
 
     const statsByCategory: Record<
@@ -736,46 +759,44 @@ export function StatsContent({ userId }: StatsContentProps) {
       yearAgo.setDate(yearAgo.getDate() - 365);
 
       // OPTIMIZATION: Parallelize all queries
-      const [
-        { data: movementsData },
-        { data: sets },
-        { data: readiness },
-        { data: targets },
-        { data: bodyWeight },
-      ] = await Promise.all([
-        supabase.from("movements").select("*").eq("user_id", userId),
-        supabase
-          .from("sets")
-          .select("*")
-          .eq("user_id", userId)
-          .gte("logged_at", yearAgo.toISOString())
-          .order("logged_at", { ascending: true }),
-        supabase
-          .from("readiness")
-          .select("date, score")
-          .eq("user_id", userId)
-          .gte("date", yearAgo.toISOString().slice(0, 10))
-          .order("date", { ascending: true }),
-        supabase
-          .from("movement_target_history")
-          .select("category, date, target")
-          .eq("user_id", userId)
-          .order("date", { ascending: true }),
-        supabase
-          .from("body_weight")
-          .select("*")
-          .eq("user_id", userId)
-          .gte("date", yearAgo.toISOString().slice(0, 10))
-          .order("date", { ascending: true }),
-      ]);
+      const [{ data: movementsData }, { data: sets }, { data: dailyStats }, { data: targets }] =
+        await Promise.all([
+          supabase.from("movements").select("*").eq("user_id", userId),
+          supabase
+            .from("sets")
+            .select("*")
+            .eq("user_id", userId)
+            .gte("logged_at", yearAgo.toISOString())
+            .order("logged_at", { ascending: true }),
+          supabase
+            .from("daily_user_stats")
+            .select(
+              "date, readiness_score, body_weight_kg, push_exercise_id, pull_exercise_id, legs_exercise_id"
+            )
+            .eq("user_id", userId)
+            .gte("date", yearAgo.toISOString().slice(0, 10))
+            .order("date", { ascending: false }),
+          supabase
+            .from("movement_target_history")
+            .select("category, date, target")
+            .eq("user_id", userId)
+            .order("date", { ascending: true }),
+        ]);
 
       setMovements(movementsData || []);
 
+      // Extract most recent exercise selections (dailyStats is ordered DESC by date)
+      const mostRecentExercises = {
+        push: dailyStats?.find((d) => d.push_exercise_id)?.push_exercise_id || null,
+        pull: dailyStats?.find((d) => d.pull_exercise_id)?.pull_exercise_id || null,
+        legs: dailyStats?.find((d) => d.legs_exercise_id)?.legs_exercise_id || null,
+      };
+      setRecentExercises(mostRecentExercises);
+
       const statsData = processStats(
         sets || [],
-        readiness || [],
-        (targets || []) as Array<{ category: MovementCategory; date: string; target: number }>,
-        bodyWeight || []
+        dailyStats || [],
+        (targets || []) as Array<{ category: MovementCategory; date: string; target: number }>
       );
       setStats(statsData);
     } catch (error) {
@@ -886,6 +907,7 @@ export function StatsContent({ userId }: StatsContentProps) {
                 showTarget={showTarget}
                 showTrend={showTrend}
                 showBodyWeight={showBodyWeight}
+                recentExercise={recentExercises[cat]}
               />
             );
           })}
@@ -904,6 +926,7 @@ export function StatsContent({ userId }: StatsContentProps) {
           showTarget={showTarget}
           showTrend={showTrend}
           showBodyWeight={showBodyWeight}
+          recentExercise={recentExercises[category]}
         />
       )}
 
