@@ -62,7 +62,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Keep body straight throughout",
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WALL_PUSHUP",
-    // gifUrl: "https://utfs.io/f/your-wall-pushups.gif", // Add your Uploadthing URL here
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbSuaCGUojZRgXyLBUJPFr0zYsI67bT5uOeWjw",
   },
   "incline-pushups": {
     cues: [
@@ -73,6 +73,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Push back up with control",
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_INCLINE_PUSHUP",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbhddcabSjmaHIqPQVJCFztU8T7ygiZXevYps9",
   },
   "knee-pushups": {
     cues: [
@@ -83,6 +84,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Full lockout at top",
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_KNEE_PUSHUP",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNb8QvtlQNRBUt5IyH9Cfnkes36EdpOcJWrFVh2",
   },
   "regular-pushups": {
     cues: [
@@ -105,6 +107,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Avoid shifting weight during movement",
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WEIGHTED_PUSHUP",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNb1dleMCFMqrxlOcSBybhfNYZHRvUCujDakEJF",
   },
   "archer-pushups": {
     cues: [
@@ -125,6 +128,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Full lockout at top",
     ],
     videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_ONE_ARM_PUSHUP",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbBVoZboVcMy92wOI6cZ3KshJAt8PurlkRqzXi",
   },
   "incline-rows": {
     cues: [
