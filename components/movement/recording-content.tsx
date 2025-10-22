@@ -318,7 +318,6 @@ export function RecordingContent({
     }
   };
 
-
   const handleSaveSet = async (reps: number, rpe: number, isMaxEffortSet: boolean) => {
     if (!movement) return;
 

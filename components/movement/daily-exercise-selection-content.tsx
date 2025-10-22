@@ -40,19 +40,17 @@ export function DailyExerciseSelectionContent({
       const exerciseField = `${category}_exercise_id`;
 
       // Upsert into daily_user_stats
-      const { error } = await supabase
-        .from("daily_user_stats")
-        .upsert(
-          {
-            user_id: userId,
-            date: today,
-            [exerciseField]: exerciseId,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "user_id,date",
-          }
-        );
+      const { error } = await supabase.from("daily_user_stats").upsert(
+        {
+          user_id: userId,
+          date: today,
+          [exerciseField]: exerciseId,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id,date",
+        }
+      );
 
       if (error) throw error;
 
@@ -83,8 +81,8 @@ export function DailyExerciseSelectionContent({
       <div className="mb-8">
         <h1 className="mb-2 text-3xl font-bold">Select Today&apos;s {categoryName} Exercise</h1>
         <p className="text-muted-foreground">
-          Choose the exercise you&apos;ll perform for all your {category} sets today. This cannot
-          be changed until tomorrow.
+          Choose the exercise you&apos;ll perform for all your {category} sets today. This cannot be
+          changed until tomorrow.
         </p>
       </div>
 
@@ -150,7 +148,7 @@ export function DailyExerciseSelectionContent({
 
                   {/* Key form cue */}
                   {formCues && formCues.cues.length > 0 && (
-                    <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+                    <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
                       {formCues.cues[0]}
                     </p>
                   )}
@@ -163,4 +161,3 @@ export function DailyExerciseSelectionContent({
     </div>
   );
 }
-

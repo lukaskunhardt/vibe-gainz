@@ -36,7 +36,12 @@ export const EXERCISE_VARIATIONS: Record<MovementCategory, ExerciseVariation[]> 
     { id: "horse-stance", name: "Horse Stance", difficulty: 3, isStandard: false },
     { id: "bodyweight-squats", name: "Bodyweight Squats", difficulty: 4, isStandard: true },
     { id: "bulgarian-split-squat", name: "Bulgarian Split Squat", difficulty: 5, isStandard: true },
-    { id: "forward-walking-lunges", name: "Forward Walking Lunges", difficulty: 6, isStandard: true },
+    {
+      id: "forward-walking-lunges",
+      name: "Forward Walking Lunges",
+      difficulty: 6,
+      isStandard: true,
+    },
     { id: "backwards-lunges", name: "Backwards Lunges", difficulty: 7, isStandard: true },
     { id: "jump-squats", name: "Jump Squats", difficulty: 8, isStandard: true },
     { id: "pistol-squats", name: "Pistol Squats", difficulty: 9, isStandard: true },

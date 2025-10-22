@@ -28,4 +28,3 @@ export default async function DailyExerciseSelectionPage({ params }: PageProps) 
 
   return <DailyExerciseSelectionContent userId={user.id} category={category} />;
 }
-
