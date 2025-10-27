@@ -95,19 +95,19 @@ export function SetLoggingModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-[95vw] sm:max-w-[500px]">
+        <DialogContent className="max-h-[90vh] max-w-[95vw] overflow-y-auto sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
+            <DialogTitle className="text-lg font-bold sm:text-xl">
               {mode === "create" ? (isMaxEffort ? "Max Effort Test" : "Log Set") : "Edit Set"}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               {mode === "create"
                 ? "Enter the reps you completed and rate the difficulty"
                 : "Update the reps and RPE for this set"}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Rep Counter Section */}
             <div className="space-y-3">
               <label className="text-sm font-bold">
@@ -115,29 +115,29 @@ export function SetLoggingModal({
               </label>
 
               {/* Cartoony Rep Display Container */}
-              <div className="rounded-2xl border-4 border-foreground/80 bg-muted/40 p-6 shadow-[0_4px_0_0_rgba(0,0,0,0.1)]">
+              <div className="rounded-2xl border-4 border-foreground/80 bg-muted/40 p-3 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] sm:p-6">
                 {/* Manual adjustment controls */}
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-1 sm:gap-2">
                   <Button
                     variant="outline"
                     size="icon"
-                    className="border-3 h-14 w-14 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none disabled:opacity-50"
+                    className="border-3 h-11 w-11 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none disabled:opacity-50 sm:h-14 sm:w-14"
                     onClick={() => setReps(Math.max(0, reps - 10))}
                     disabled={reps <= 0}
                     title="Subtract 10"
                   >
-                    <span className="text-lg font-bold">-10</span>
+                    <span className="text-sm font-bold sm:text-lg">-10</span>
                   </Button>
 
                   <Button
                     variant="outline"
                     size="icon"
-                    className="border-3 h-14 w-14 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none disabled:opacity-50"
+                    className="border-3 h-11 w-11 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none disabled:opacity-50 sm:h-14 sm:w-14"
                     onClick={() => setReps(Math.max(0, reps - 1))}
                     disabled={reps <= 0}
                     title="Subtract 1"
                   >
-                    <span className="text-lg font-bold">-1</span>
+                    <span className="text-sm font-bold sm:text-lg">-1</span>
                   </Button>
 
                   {/* Animated number display or input */}
@@ -148,18 +148,18 @@ export function SetLoggingModal({
                       onChange={(e) => setReps(Math.max(0, parseInt(e.target.value) || 0))}
                       onBlur={() => setIsEditingReps(false)}
                       autoFocus
-                      className="border-3 w-28 rounded-xl border-foreground/40 bg-background p-2 text-center text-5xl font-bold shadow-inner focus:border-foreground focus:outline-none"
+                      className="border-3 w-20 rounded-xl border-foreground/40 bg-background p-2 text-center text-4xl font-bold shadow-inner focus:border-foreground focus:outline-none sm:w-28 sm:text-5xl"
                       min="0"
                     />
                   ) : (
                     <div
                       onClick={() => setIsEditingReps(true)}
-                      className="border-3 relative w-28 cursor-pointer rounded-xl border-foreground/40 bg-background px-2 py-3 text-center shadow-inner transition-colors hover:border-foreground/60"
+                      className="border-3 relative w-20 cursor-pointer rounded-xl border-foreground/40 bg-background px-2 py-2 text-center shadow-inner transition-colors hover:border-foreground/60 sm:w-28 sm:py-3"
                       title="Click to type a number"
                     >
                       <NumberFlow
                         value={reps}
-                        className="text-5xl font-bold tabular-nums"
+                        className="text-4xl font-bold tabular-nums sm:text-5xl"
                         transformTiming={{ duration: 400, easing: "ease-out" }}
                         spinTiming={{ duration: 400, easing: "ease-out" }}
                         opacityTiming={{ duration: 200, easing: "ease-out" }}
@@ -170,21 +170,21 @@ export function SetLoggingModal({
                   <Button
                     variant="outline"
                     size="icon"
-                    className="border-3 h-14 w-14 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none"
+                    className="border-3 h-11 w-11 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none sm:h-14 sm:w-14"
                     onClick={() => setReps(reps + 1)}
                     title="Add 1"
                   >
-                    <span className="text-lg font-bold">+1</span>
+                    <span className="text-sm font-bold sm:text-lg">+1</span>
                   </Button>
 
                   <Button
                     variant="outline"
                     size="icon"
-                    className="border-3 h-14 w-14 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none"
+                    className="border-3 h-11 w-11 rounded-xl border-foreground/60 shadow-[0_3px_0_0_rgba(0,0,0,0.1)] transition-all hover:scale-105 hover:border-foreground active:translate-y-0.5 active:shadow-none sm:h-14 sm:w-14"
                     onClick={() => setReps(reps + 10)}
                     title="Add 10"
                   >
-                    <span className="text-lg font-bold">+10</span>
+                    <span className="text-sm font-bold sm:text-lg">+10</span>
                   </Button>
                 </div>
               </div>
