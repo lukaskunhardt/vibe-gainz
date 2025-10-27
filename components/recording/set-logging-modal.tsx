@@ -107,15 +107,15 @@ export function SetLoggingModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 sm:space-y-6">
+          <div className="space-y-3 sm:space-y-6">
             {/* Rep Counter Section */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label className="text-sm font-bold">
                 {isMaxEffort ? "Max Effort Reps" : "Reps"}
               </label>
 
               {/* Cartoony Rep Display Container */}
-              <div className="rounded-2xl border-4 border-foreground/80 bg-muted/40 p-3 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] sm:p-6">
+              <div className="rounded-2xl border-4 border-foreground/80 bg-muted/40 p-2 shadow-[0_4px_0_0_rgba(0,0,0,0.1)] sm:p-6">
                 {/* Manual adjustment controls */}
                 <div className="flex items-center justify-center gap-0.5 sm:gap-2">
                   <Button
@@ -189,9 +189,6 @@ export function SetLoggingModal({
                 </div>
               </div>
             </div>
-
-            {/* Visual divider */}
-            {!isMaxEffort && <div className="border-t-2 border-dashed border-foreground/20"></div>}
 
             {/* RPE Selector */}
             {!isMaxEffort && <RPESelector value={rpe} onChange={setRPE} />}
