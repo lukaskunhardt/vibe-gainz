@@ -18,6 +18,7 @@ import {
   updateExerciseLastUsed,
   getActiveExercises,
 } from "@/lib/utils/exercise-rotation";
+import { ExerciseRotationModal } from "@/components/settings/exercise-rotation-modal";
 
 interface DailyExerciseSelectionContentProps {
   userId: string;
@@ -34,6 +35,7 @@ export function DailyExerciseSelectionContent({
   const [scheduledExercise, setScheduledExercise] = useState<string | null>(null);
   const [activeExerciseIds, setActiveExerciseIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSetupModal, setShowSetupModal] = useState(false);
 
   const exercises = EXERCISE_VARIATIONS[category];
   const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
@@ -43,6 +45,14 @@ export function DailyExerciseSelectionContent({
     loadExerciseData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, category]);
+
+  // Check if no active exercises and show modal
+  useEffect(() => {
+    if (!loading && activeExerciseIds.length === 0) {
+      toast.error("No exercises configured. Please add at least one exercise.");
+      setShowSetupModal(true);
+    }
+  }, [loading, activeExerciseIds.length]);
 
   const loadExerciseData = async () => {
     setLoading(true);
@@ -158,7 +168,17 @@ export function DailyExerciseSelectionContent({
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {displayExercises.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-center text-muted-foreground">
+              No exercises configured for {categoryName.toLowerCase()}. Please add at least one
+              exercise to get started.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {displayExercises.map((exercise) => {
           const formCues = FORM_CUES[exercise.id];
           const isSelected = selectedExercise === exercise.id;
@@ -232,7 +252,20 @@ export function DailyExerciseSelectionContent({
             </Card>
           );
         })}
-      </div>
+        </div>
+      )}
+
+      {/* Exercise rotation setup modal */}
+      <ExerciseRotationModal
+        userId={userId}
+        open={showSetupModal}
+        onOpenChange={setShowSetupModal}
+        initialCategory={category}
+        onComplete={() => {
+          setShowSetupModal(false);
+          loadExerciseData();
+        }}
+      />
     </div>
   );
 }

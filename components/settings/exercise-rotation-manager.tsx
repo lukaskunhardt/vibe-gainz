@@ -15,9 +15,11 @@ import Image from "next/image";
 
 interface ExerciseRotationManagerProps {
   userId: string;
+  initialCategory?: MovementCategory;
+  onExercisesChange?: () => void;
 }
 
-export function ExerciseRotationManager({ userId }: ExerciseRotationManagerProps) {
+export function ExerciseRotationManager({ userId, initialCategory, onExercisesChange }: ExerciseRotationManagerProps) {
   const [movements, setMovements] = useState<{
     push: Movement[];
     pull: Movement[];
@@ -48,6 +50,10 @@ export function ExerciseRotationManager({ userId }: ExerciseRotationManagerProps
         pull: pullData,
         legs: legsData,
       });
+
+      if (onExercisesChange) {
+        onExercisesChange();
+      }
     } catch (error) {
       console.error("Error loading movements:", error);
       toast.error("Failed to load exercises");
@@ -102,9 +108,13 @@ export function ExerciseRotationManager({ userId }: ExerciseRotationManagerProps
     );
   }
 
+  const categoriesToShow = initialCategory
+    ? [initialCategory]
+    : (["push", "pull", "legs"] as MovementCategory[]);
+
   return (
     <div className="space-y-4">
-      {(["push", "pull", "legs"] as MovementCategory[]).map((category) => {
+      {categoriesToShow.map((category) => {
         const allExercises = EXERCISE_VARIATIONS[category];
 
         return (

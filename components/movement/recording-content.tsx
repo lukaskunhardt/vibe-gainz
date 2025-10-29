@@ -37,6 +37,7 @@ import { getActiveExercises } from "@/lib/utils/exercise-rotation";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { ExerciseRotationModal } from "@/components/settings/exercise-rotation-modal";
 
 interface RecordingContentProps {
   userId: string;
@@ -89,6 +90,9 @@ export function RecordingContent({
   // Change exercise sheet state
   const [showChangeExerciseSheet, setShowChangeExerciseSheet] = useState(false);
   const [activeExercises, setActiveExercises] = useState<Movement[]>([]);
+
+  // Setup modal state
+  const [showSetupModal, setShowSetupModal] = useState(false);
 
   // Old daily-target logic removed; prescription comes from readiness and max-effort
 
@@ -166,19 +170,13 @@ export function RecordingContent({
         movementData = data;
       }
 
-      // Check if at least one movement exists for this category
+      // Check if user has any exercises in rotation for this category
       if (!isMaxEffort) {
-        const { data: anyMovement } = await supabase
-          .from("movements")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("category", category)
-          .limit(1)
-          .maybeSingle();
+        const exercisesInRotation = await getActiveExercises(userId, category);
 
-        if (!anyMovement) {
-          toast.error("Movement not configured. Please set it up first.");
-          router.push(`/movement/${category}/select`);
+        if (exercisesInRotation.length === 0) {
+          toast.error("No exercises configured. Please add at least one exercise.");
+          setShowSetupModal(true);
           return;
         }
       }
@@ -678,6 +676,18 @@ export function RecordingContent({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Exercise rotation setup modal */}
+      <ExerciseRotationModal
+        userId={userId}
+        open={showSetupModal}
+        onOpenChange={setShowSetupModal}
+        initialCategory={category}
+        onComplete={() => {
+          setShowSetupModal(false);
+          loadData(false);
+        }}
+      />
     </div>
   );
 }

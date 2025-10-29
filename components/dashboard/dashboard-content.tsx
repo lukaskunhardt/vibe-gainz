@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { ExerciseStatus, Movement, MovementCategory } from "@/types";
@@ -15,6 +14,8 @@ import { StatsContent } from "@/components/stats/stats-content";
 import { SetCountProgressBar } from "@/components/recording/set-count-progress-bar";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { getDailyPrescription } from "@/lib/utils/prescription";
+import { ExerciseRotationModal } from "@/components/settings/exercise-rotation-modal";
+import { getActiveExercises } from "@/lib/utils/exercise-rotation";
 
 interface DashboardContentProps {
   userId: string;
@@ -41,6 +42,8 @@ interface CategoryProgress {
 export function DashboardContent({ userId }: DashboardContentProps) {
   const [progress, setProgress] = useState<CategoryProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [setupModalOpen, setSetupModalOpen] = useState(false);
+  const [setupCategory, setSetupCategory] = useState<MovementCategory | undefined>(undefined);
   // Weekly reviews removed
   const isDesktop = useIsDesktop();
   const searchParams = useSearchParams();
@@ -66,6 +69,9 @@ export function DashboardContent({ userId }: DashboardContentProps) {
         { data: dailyStatsData },
         { data: statusData },
         { data: allMaxEffortSets },
+        pushExercises,
+        pullExercises,
+        legsExercises,
       ] = await Promise.all([
         // Fetch movements
         supabase.from("movements").select("*").eq("user_id", userId),
@@ -92,7 +98,17 @@ export function DashboardContent({ userId }: DashboardContentProps) {
           .eq("user_id", userId)
           .eq("is_max_effort", true)
           .order("logged_at", { ascending: true }),
+        // Fetch active exercises for rotation
+        getActiveExercises(userId, "push"),
+        getActiveExercises(userId, "pull"),
+        getActiveExercises(userId, "legs"),
       ]);
+
+      const activeExercisesByCategory = {
+        push: pushExercises,
+        pull: pullExercises,
+        legs: legsExercises,
+      };
 
       const movementList = (movementsData ?? []) as Movement[];
       const statusList = (statusData ?? []) as ExerciseStatus[];
@@ -211,7 +227,7 @@ export function DashboardContent({ userId }: DashboardContentProps) {
           targetReps,
           completedSets,
           prescribedSets: prescription.sets,
-          isLocked: !movement,
+          isLocked: activeExercisesByCategory[category].length === 0,
           promptPending,
           hasMaxEffortToday,
           maxEffortRepsToday,
@@ -305,18 +321,40 @@ export function DashboardContent({ userId }: DashboardContentProps) {
       {/* Movement Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {progress.map((item) => (
-          <MovementCard key={item.category} {...item} isDesktop={isDesktop} />
+          <MovementCard
+            key={item.category}
+            {...item}
+            isDesktop={isDesktop}
+            onSetupClick={handleSetupModalOpen}
+          />
         ))}
       </div>
 
       {/* Desktop-only: Render stats below movement cards */}
       {isDesktop && <StatsContent userId={userId} />}
+
+      {/* Exercise rotation setup modal */}
+      <ExerciseRotationModal
+        userId={userId}
+        open={setupModalOpen}
+        onOpenChange={setSetupModalOpen}
+        initialCategory={setupCategory}
+        onComplete={() => {
+          loadDashboardData();
+        }}
+      />
     </div>
   );
+
+  function handleSetupModalOpen(category: MovementCategory) {
+    setSetupCategory(category);
+    setSetupModalOpen(true);
+  }
 }
 
 interface MovementCardProps extends CategoryProgress {
   isDesktop: boolean;
+  onSetupClick: (category: MovementCategory) => void;
 }
 
 function MovementCard({
@@ -335,6 +373,7 @@ function MovementCard({
   streakPrevDays,
   exerciseId,
   isDesktop,
+  onSetupClick,
 }: MovementCardProps) {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
@@ -362,6 +401,10 @@ function MovementCard({
     }
   };
 
+  const handleSetupClick = () => {
+    onSetupClick(category);
+  };
+
   if (isLocked) {
     return (
       <Card className="relative overflow-hidden">
@@ -373,12 +416,10 @@ function MovementCard({
           <CardDescription>Not yet configured</CardDescription>
         </CardHeader>
         <CardContent>
-          <Link href={`/movement/${category}/select`}>
-            <Button className="w-full" variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Set Up Movement
-            </Button>
-          </Link>
+          <Button className="w-full" variant="outline" onClick={handleSetupClick}>
+            <Plus className="mr-2 h-4 w-4" />
+            Set Up Movement
+          </Button>
         </CardContent>
       </Card>
     );
