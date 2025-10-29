@@ -112,33 +112,25 @@ export function RecordingContent({
       const todayEnd = new Date();
       todayEnd.setHours(23, 59, 59, 999);
 
-      // OPTIMIZATION: Parallelize all queries
-      const [{ data: movementData }, { data: dailyStatsData }, { data: setsData }] =
-        await Promise.all([
-          // Fetch movement
-          supabase
-            .from("movements")
-            .select("*")
-            .eq("user_id", userId)
-            .eq("category", category)
-            .single(),
-          // Fetch today's daily stats (for exercise selection and readiness)
-          supabase
-            .from("daily_user_stats")
-            .select(`${category}_exercise_id,readiness_score`)
-            .eq("user_id", userId)
-            .eq("date", todayStr)
-            .maybeSingle(),
-          // Fetch today's sets
-          supabase
-            .from("sets")
-            .select("*")
-            .eq("user_id", userId)
-            .eq("category", category)
-            .gte("logged_at", todayStart.toISOString())
-            .lte("logged_at", todayEnd.toISOString())
-            .order("set_number", { ascending: true }),
-        ]);
+      // OPTIMIZATION: Parallelize initial queries
+      const [{ data: dailyStatsData }, { data: setsData }] = await Promise.all([
+        // Fetch today's daily stats (for exercise selection and readiness)
+        supabase
+          .from("daily_user_stats")
+          .select(`${category}_exercise_id,readiness_score`)
+          .eq("user_id", userId)
+          .eq("date", todayStr)
+          .maybeSingle(),
+        // Fetch today's sets
+        supabase
+          .from("sets")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("category", category)
+          .gte("logged_at", todayStart.toISOString())
+          .lte("logged_at", todayEnd.toISOString())
+          .order("set_number", { ascending: true }),
+      ]);
 
       // Get today's exercise selection from daily_user_stats
       const exerciseField = `${category}_exercise_id`;
@@ -151,8 +143,8 @@ export function RecordingContent({
         : null;
       setReadiness(typeof readinessScoreRaw === "number" ? readinessScoreRaw : null);
 
-      const fallbackExercise = movementData?.exercise_variation || initialExercise || null;
-      const effectiveExercise = todayExercise || fallbackExercise;
+      // Determine which exercise we're working with
+      const effectiveExercise = todayExercise || initialExercise || null;
 
       // If no daily exercise selected, redirect to selection page
       if (!todayExercise && !isMaxEffort) {
@@ -161,10 +153,34 @@ export function RecordingContent({
         return;
       }
 
-      if (!movementData && !isMaxEffort) {
-        toast.error("Movement not configured. Please set it up first.");
-        router.push(`/movement/${category}/select`);
-        return;
+      // Fetch movement for the specific exercise
+      let movementData = null;
+      if (effectiveExercise) {
+        const { data } = await supabase
+          .from("movements")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("category", category)
+          .eq("exercise_variation", effectiveExercise)
+          .maybeSingle();
+        movementData = data;
+      }
+
+      // Check if at least one movement exists for this category
+      if (!isMaxEffort) {
+        const { data: anyMovement } = await supabase
+          .from("movements")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("category", category)
+          .limit(1)
+          .maybeSingle();
+
+        if (!anyMovement) {
+          toast.error("Movement not configured. Please set it up first.");
+          router.push(`/movement/${category}/select`);
+          return;
+        }
       }
 
       let status: ExerciseStatus | null = null;
