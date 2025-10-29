@@ -32,6 +32,8 @@ CREATE INDEX IF NOT EXISTS idx_movements_rotation
 CREATE INDEX IF NOT EXISTS idx_movements_last_used 
   ON movements(user_id, category, last_used_date NULLS FIRST);
 
--- RLS policies already exist and will work with multiple rows per category
--- No changes needed to RLS policies
+-- Add DELETE policy for movements table (was missing)
+CREATE POLICY "Users can delete own movements" ON movements 
+  FOR DELETE 
+  USING (auth.uid() = user_id);
 

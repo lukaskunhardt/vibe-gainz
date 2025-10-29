@@ -158,15 +158,20 @@ export async function removeExerciseFromRotation(
     return false;
   }
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("movements")
-    .delete()
+    .delete({ count: "exact" })
     .eq("user_id", userId)
     .eq("category", category)
     .eq("exercise_variation", exerciseVariation);
 
   if (error) {
     console.error("Error removing exercise from rotation:", error);
+    return false;
+  }
+
+  if (count === 0) {
+    console.error("No rows were deleted - possible RLS policy issue");
     return false;
   }
 
