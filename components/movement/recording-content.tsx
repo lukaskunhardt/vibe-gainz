@@ -356,7 +356,8 @@ export function RecordingContent({
             user_id: userId,
             category,
             exercise_variation: movement.exercise_variation,
-            is_unlocked: true,
+            rotation_order: 1,
+            last_used_date: null,
           })
           .select()
           .single();
