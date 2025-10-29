@@ -156,6 +156,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Full arm extension at bottom",
     ],
     // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_AUSTRALIAN_PULLUP",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbE1ZNx7p9LxuJXNrwO64dKgjaMTGCbYIV3B52"
   },
   "jumping-pullups": {
     cues: [
@@ -177,6 +178,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "Use lighter band as you progress",
     ],
     // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_BAND_ASSISTED_PULLUP",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbjO24ChPPwVgza0DFUiObCSYXJym1G5LKxqW3"
   },
   "regular-pullups": {
     cues: [
@@ -198,6 +200,7 @@ export const FORM_CUES: Record<string, FormCues> = {
       "No momentum or swinging",
     ],
     // videoUrl: "https://www.youtube.com/embed/PLACEHOLDER_WEIGHTED_PULLUP",
+    gifUrl: "https://ei1bcw8zdb.ufs.sh/f/adJSRHiLPvNbZlB0abQAca2tY3n5Uz6WHOGeCL9jN1kBbJvu",
   },
   "archer-pullups": {
     cues: [
