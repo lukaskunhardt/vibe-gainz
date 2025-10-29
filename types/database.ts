@@ -12,7 +12,8 @@ export interface Movement {
   user_id: string;
   category: MovementCategory;
   exercise_variation: string;
-  is_unlocked: boolean;
+  rotation_order: number;
+  last_used_date: string | null;
   created_at: string;
   updated_at: string;
 }

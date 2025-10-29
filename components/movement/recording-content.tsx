@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ExerciseStatus, MovementCategory, Set as WorkoutSet } from "@/types";
+import { ExerciseStatus, MovementCategory, Set as WorkoutSet, Movement } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus, Trophy } from "lucide-react";
+import { ArrowLeft, Plus, Trophy, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { SetCountProgressBar } from "@/components/recording/set-count-progress-bar";
@@ -14,7 +14,7 @@ import { computeSetMetrics, getDailyPrescription } from "@/lib/utils/prescriptio
 import { SetLoggingModal } from "@/components/recording/set-logging-modal";
 import { CompletedSetsList } from "@/components/recording/completed-sets-list";
 import { updateSet, deleteSet } from "@/lib/hooks/use-sets";
-import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
+import { EXERCISE_VARIATIONS, FORM_CUES } from "@/lib/constants/exercises";
 import { PRPromptModal } from "@/components/movement/pr-prompt-modal";
 import {
   AlertDialog,
@@ -26,6 +26,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { getActiveExercises } from "@/lib/utils/exercise-rotation";
+import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 
 interface RecordingContentProps {
   userId: string;
@@ -74,6 +85,10 @@ export function RecordingContent({
   // Delete confirmation dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [setToDelete, setSetToDelete] = useState<string | null>(null);
+
+  // Change exercise sheet state
+  const [showChangeExerciseSheet, setShowChangeExerciseSheet] = useState(false);
+  const [activeExercises, setActiveExercises] = useState<Movement[]>([]);
 
   // Old daily-target logic removed; prescription comes from readiness and max-effort
 
@@ -188,6 +203,69 @@ export function RecordingContent({
       } else {
         setIsRefreshing(false);
       }
+    }
+  };
+
+  const loadActiveExercises = async () => {
+    try {
+      const exercises = await getActiveExercises(userId, category);
+      setActiveExercises(exercises);
+    } catch (error) {
+      console.error("Error loading active exercises:", error);
+    }
+  };
+
+  const handleOpenChangeExercise = async () => {
+    await loadActiveExercises();
+    setShowChangeExerciseSheet(true);
+  };
+
+  const handleChangeExercise = async (newExerciseId: string) => {
+    const hasSetsLogged = todaySets.length > 0;
+
+    if (hasSetsLogged) {
+      // Show warning but allow change
+      const confirmed = window.confirm(
+        "You have already logged sets today. Changing exercises will mix different exercises in one day. Continue?"
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setIsRefreshing(true);
+    try {
+      const supabase = createClient();
+      const today = format(new Date(), "yyyy-MM-dd");
+      const exerciseField = `${category}_exercise_id`;
+
+      // Update daily_user_stats with new exercise
+      const { error } = await supabase.from("daily_user_stats").upsert(
+        {
+          user_id: userId,
+          date: today,
+          [exerciseField]: newExerciseId,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id,date",
+        }
+      );
+
+      if (error) throw error;
+
+      const exerciseName =
+        EXERCISE_VARIATIONS[category].find((ex) => ex.id === newExerciseId)?.name || newExerciseId;
+      toast.success(`Exercise changed to ${exerciseName}`);
+
+      // Reload data to update UI
+      await loadData(false);
+      setShowChangeExerciseSheet(false);
+    } catch (error) {
+      console.error("Error changing exercise:", error);
+      toast.error("Failed to change exercise");
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -412,13 +490,19 @@ export function RecordingContent({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between gap-2">
         <Link href="/dashboard">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
           </Button>
         </Link>
+        {!isMaxEffort && (
+          <Button variant="outline" size="sm" onClick={handleOpenChangeExercise}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Change Exercise
+          </Button>
+        )}
       </div>
 
       <Card className={isRefreshing ? "opacity-90 transition-opacity" : ""}>
@@ -511,6 +595,72 @@ export function RecordingContent({
           router.push(`/movement/${category}/record?mode=max-effort`);
         }}
       />
+
+      {/* Change Exercise Sheet */}
+      <Sheet open={showChangeExerciseSheet} onOpenChange={setShowChangeExerciseSheet}>
+        <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Change Exercise</SheetTitle>
+            <SheetDescription>
+              Select a different exercise from your active rotation for today
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-3">
+            {activeExercises.map((exercise) => {
+              const exerciseInfo = EXERCISE_VARIATIONS[category].find(
+                (ex) => ex.id === exercise.exercise_variation
+              );
+              const formCues = FORM_CUES[exercise.exercise_variation];
+              const isCurrent = movement?.exercise_variation === exercise.exercise_variation;
+
+              return (
+                <button
+                  key={exercise.id}
+                  onClick={() => handleChangeExercise(exercise.exercise_variation)}
+                  disabled={isCurrent || isRefreshing}
+                  className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                    isCurrent
+                      ? "cursor-not-allowed border-primary bg-primary/5 opacity-60"
+                      : "hover:bg-muted/50"
+                  }`}
+                >
+                  {/* Thumbnail */}
+                  {formCues?.gifUrl && (
+                    <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted">
+                      <Image
+                        src={formCues.gifUrl}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                  )}
+
+                  {/* Exercise info */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{exerciseInfo?.name || "Unknown"}</span>
+                      {isCurrent && (
+                        <Badge variant="default" className="text-xs">
+                          Current
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+
+            {activeExercises.length === 0 && (
+              <p className="py-8 text-center text-muted-foreground">
+                No active exercises found. Please configure exercises in Settings.
+              </p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

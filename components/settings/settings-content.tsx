@@ -6,8 +6,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Dumbbell, Trash2, AlertTriangle, BookOpen, LogOut } from "lucide-react";
+import { User, Dumbbell, Trash2, AlertTriangle, BookOpen, LogOut, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { ExerciseRotationManager } from "@/components/settings/exercise-rotation-manager";
 import {
   Dialog,
   DialogContent,
@@ -87,6 +88,23 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
             <label className="text-sm font-medium text-muted-foreground">User ID</label>
             <p className="font-mono text-sm text-muted-foreground">{userId}</p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Exercise Rotation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5" />
+            Exercise Rotation
+          </CardTitle>
+          <CardDescription>
+            Manage which exercises to rotate through for each movement category. The app will
+            automatically cycle through your selected exercises each day.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ExerciseRotationManager userId={userId} />
         </CardContent>
       </Card>
 
