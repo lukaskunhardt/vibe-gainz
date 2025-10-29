@@ -3,18 +3,19 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { MovementCategory, Set as WorkoutSet } from "@/types";
+import { ExerciseStatus, MovementCategory, Set as WorkoutSet } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Plus, Trophy } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { calculateInitialDailyTarget, shouldAutoProgress } from "@/lib/utils/calculations";
-import { EnhancedProgressBar } from "@/components/recording/enhanced-progress-bar";
+import { SetCountProgressBar } from "@/components/recording/set-count-progress-bar";
+import { computeSetMetrics, getDailyPrescription } from "@/lib/utils/prescription";
 import { SetLoggingModal } from "@/components/recording/set-logging-modal";
 import { CompletedSetsList } from "@/components/recording/completed-sets-list";
 import { updateSet, deleteSet } from "@/lib/hooks/use-sets";
-import { EXERCISE_VARIATIONS, getExerciseById } from "@/lib/constants/exercises";
+import { EXERCISE_VARIATIONS } from "@/lib/constants/exercises";
+import { PRPromptModal } from "@/components/movement/pr-prompt-modal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,13 +44,27 @@ export function RecordingContent({
   const [movement, setMovement] = useState<{
     id: string;
     exercise_variation: string;
-    max_effort_reps: number;
   } | null>(null);
-  const [currentTarget, setCurrentTarget] = useState<number>(0);
   const [todaySets, setTodaySets] = useState<WorkoutSet[]>([]);
   const [loading, setLoading] = useState(true); // Initial page load only
   const [isRefreshing, setIsRefreshing] = useState(false); // Post-action data refresh
-  const [lastBestSet, setLastBestSet] = useState<number>(0);
+  const [readiness, setReadiness] = useState<number | null>(null);
+  const [exerciseStatus, setExerciseStatus] = useState<ExerciseStatus | null>(null);
+  const [promptDismissed, setPromptDismissed] = useState(false);
+  const [showPRModal, setShowPRModal] = useState(false);
+
+  useEffect(() => {
+    if (
+      !isMaxEffort &&
+      exerciseStatus?.prompt_pending &&
+      (readiness ?? 0) >= 3 &&
+      !promptDismissed
+    ) {
+      setShowPRModal(true);
+    } else {
+      setShowPRModal(false);
+    }
+  }, [exerciseStatus, readiness, isMaxEffort, promptDismissed]);
 
   // Modal state
   const [showSetModal, setShowSetModal] = useState(false);
@@ -60,18 +75,7 @@ export function RecordingContent({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [setToDelete, setSetToDelete] = useState<string | null>(null);
 
-  // Calculate recommended sets based on daily target and last best set
-  const calculateRecommendedSets = (dailyTarget: number, lastBestSetReps: number): number[] => {
-    if (lastBestSetReps === 0 || dailyTarget === 0) return [dailyTarget];
-    const sets: number[] = [];
-    let remaining = dailyTarget;
-    while (remaining > 0) {
-      const nextSet = Math.min(lastBestSetReps, remaining);
-      sets.push(nextSet);
-      remaining -= nextSet;
-    }
-    return sets;
-  };
+  // Old daily-target logic removed; prescription comes from readiness and max-effort
 
   useEffect(() => {
     loadData(true); // Initial load with skeleton
@@ -94,62 +98,46 @@ export function RecordingContent({
       todayEnd.setHours(23, 59, 59, 999);
 
       // OPTIMIZATION: Parallelize all queries
-      const [
-        { data: movementData },
-        { data: dailyStatsData },
-        { data: targetData },
-        { data: setsData },
-        { data: lastSessionSets },
-      ] = await Promise.all([
-        // Fetch movement
-        supabase
-          .from("movements")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("category", category)
-          .single(),
-        // Fetch today's daily stats (for exercise selection)
-        supabase
-          .from("daily_user_stats")
-          .select(`${category}_exercise_id`)
-          .eq("user_id", userId)
-          .eq("date", todayStr)
-          .maybeSingle(),
-        // Fetch current target from history
-        supabase
-          .from("movement_target_history")
-          .select("target")
-          .eq("user_id", userId)
-          .eq("category", category)
-          .lte("date", todayStr)
-          .order("date", { ascending: false })
-          .limit(1),
-        // Fetch today's sets
-        supabase
-          .from("sets")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("category", category)
-          .gte("logged_at", todayStart.toISOString())
-          .lte("logged_at", todayEnd.toISOString())
-          .order("set_number", { ascending: true }),
-        // Fetch last session's sets to find best set
-        supabase
-          .from("sets")
-          .select("reps")
-          .eq("user_id", userId)
-          .eq("category", category)
-          .eq("is_max_effort", false)
-          .lt("logged_at", todayStart.toISOString())
-          .order("logged_at", { ascending: false })
-          .limit(20),
-      ]);
+      const [{ data: movementData }, { data: dailyStatsData }, { data: setsData }] =
+        await Promise.all([
+          // Fetch movement
+          supabase
+            .from("movements")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("category", category)
+            .single(),
+          // Fetch today's daily stats (for exercise selection and readiness)
+          supabase
+            .from("daily_user_stats")
+            .select(`${category}_exercise_id,readiness_score`)
+            .eq("user_id", userId)
+            .eq("date", todayStr)
+            .maybeSingle(),
+          // Fetch today's sets
+          supabase
+            .from("sets")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("category", category)
+            .gte("logged_at", todayStart.toISOString())
+            .lte("logged_at", todayEnd.toISOString())
+            .order("set_number", { ascending: true }),
+        ]);
 
       // Get today's exercise selection from daily_user_stats
       const exerciseField = `${category}_exercise_id`;
-      const todayExercise = dailyStatsData
-        ? (dailyStatsData as Record<string, string | null>)[exerciseField as string]
+      const todayExerciseRaw = dailyStatsData
+        ? (dailyStatsData as Record<string, string | number | null>)[exerciseField as string]
         : null;
+      const todayExercise = typeof todayExerciseRaw === "string" ? todayExerciseRaw : null;
+      const readinessScoreRaw = dailyStatsData
+        ? (dailyStatsData as Record<string, string | number | null>)["readiness_score"]
+        : null;
+      setReadiness(typeof readinessScoreRaw === "number" ? readinessScoreRaw : null);
+
+      const fallbackExercise = movementData?.exercise_variation || initialExercise || null;
+      const effectiveExercise = todayExercise || fallbackExercise;
 
       // If no daily exercise selected, redirect to selection page
       if (!todayExercise && !isMaxEffort) {
@@ -158,47 +146,39 @@ export function RecordingContent({
         return;
       }
 
-      // If no movement exists and we're in max effort mode with initialExercise, allow it
-      if (!movementData) {
-        if (isMaxEffort && initialExercise) {
-          // No movement yet - this is initial setup
-          // Set a temporary movement structure with the selected exercise
-          setMovement({
-            id: "", // Will be created when saving
-            exercise_variation: initialExercise,
-            max_effort_reps: 0,
-          });
-          setCurrentTarget(0);
-        } else {
-          toast.error("Movement not configured. Please set it up first.");
-          router.push(`/movement/${category}/select`);
-          return;
-        }
+      if (!movementData && !isMaxEffort) {
+        toast.error("Movement not configured. Please set it up first.");
+        router.push(`/movement/${category}/select`);
+        return;
       }
 
-      let target = 0;
+      let status: ExerciseStatus | null = null;
+      if (effectiveExercise) {
+        const { data: statusData } = await supabase
+          .from("exercise_status")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("exercise_id", effectiveExercise)
+          .maybeSingle();
+        status = (statusData as ExerciseStatus | null) ?? null;
+      }
+
+      setExerciseStatus(status);
+      setPromptDismissed(false);
+
       if (movementData) {
-        // Use today's exercise selection instead of movement.exercise_variation
-        const effectiveExercise = todayExercise || movementData.exercise_variation;
         setMovement({
-          ...movementData,
+          id: movementData.id,
+          exercise_variation: effectiveExercise || movementData.exercise_variation,
+        });
+      } else if (isMaxEffort && effectiveExercise) {
+        setMovement({
+          id: "",
           exercise_variation: effectiveExercise,
         });
-        target = targetData?.[0]?.target ?? 0;
-        setCurrentTarget(target);
       }
 
       setTodaySets(setsData || []);
-
-      // Calculate last best set from previous sessions
-      const calculatedLastBestSet = lastSessionSets?.length
-        ? Math.max(...lastSessionSets.map((s) => s.reps))
-        : movementData
-          ? Math.floor(movementData.max_effort_reps * 0.8)
-          : 0;
-      setLastBestSet(calculatedLastBestSet);
-
-      // No need to prefill reps - modal will handle this
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Failed to load data");
@@ -292,16 +272,12 @@ export function RecordingContent({
 
       // If max effort and movement doesn't exist yet (initial setup), create it first
       if ((isMaxEffortSet || isMaxEffort) && !movement.id) {
-        const newDailyTarget = calculateInitialDailyTarget(reps);
-
         const { data: newMovement, error: createError } = await supabase
           .from("movements")
           .insert({
             user_id: userId,
             category,
             exercise_variation: movement.exercise_variation,
-            max_effort_reps: reps,
-            max_effort_date: new Date().toISOString(),
             is_unlocked: true,
           })
           .select()
@@ -310,23 +286,13 @@ export function RecordingContent({
         if (createError) throw createError;
         if (newMovement) {
           movementId = newMovement.id;
-          setMovement(newMovement);
-
-          // Insert initial target into history
-          const today = new Date();
-          const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-          await supabase.from("movement_target_history").insert({
-            user_id: userId,
-            movement_id: newMovement.id,
-            category,
-            date: todayStr,
-            target: newDailyTarget,
-          });
-          setCurrentTarget(newDailyTarget);
+          setMovement({ id: newMovement.id, exercise_variation: newMovement.exercise_variation });
         }
       }
 
       // Insert set
+      const { rir, impliedMaxReps } = computeSetMetrics(reps, rpe, isMaxEffortSet || isMaxEffort);
+
       const { error: setError } = await supabase.from("sets").insert({
         user_id: userId,
         movement_id: movementId || null,
@@ -337,86 +303,30 @@ export function RecordingContent({
         is_max_effort: isMaxEffortSet || isMaxEffort,
         set_number: setNumber,
         logged_at: new Date().toISOString(),
+        rir,
+        implied_max_reps: impliedMaxReps,
       });
 
       if (setError) throw setError;
 
-      // If max effort and movement already exists, update it
-      if ((isMaxEffortSet || isMaxEffort) && movement.id) {
-        const newDailyTarget = calculateInitialDailyTarget(reps);
-        const exercise = getExerciseById(movement.exercise_variation);
-
-        // Check for auto-progression
-        let nextExercise = null;
-        if (exercise && !exercise.isStandard && reps > 20) {
-          nextExercise = shouldAutoProgress(exercise, reps, category);
-        }
-
-        const updateData: Record<string, string | number> = {
-          max_effort_reps: reps,
-          max_effort_date: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        if (nextExercise) {
-          updateData.exercise_variation = nextExercise.id;
-          toast.success(`Great job! Auto-progressed to ${nextExercise.name}`);
-        }
-
-        const { error: updateError } = await supabase
-          .from("movements")
-          .update(updateData)
-          .eq("id", movement.id);
-
-        if (updateError) throw updateError;
-
-        // Insert new target into history
-        const today = new Date();
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-        await supabase.from("movement_target_history").upsert(
-          {
-            user_id: userId,
-            movement_id: movement.id,
-            category,
-            date: todayStr,
-            target: newDailyTarget,
-          },
-          { onConflict: "movement_id,date" }
-        );
-        setCurrentTarget(newDailyTarget);
-
-        // Mark max effort prompt as completed if exists
-        await supabase
-          .from("max_effort_prompts")
-          .update({ completed: true })
-          .eq("user_id", userId)
-          .eq("category", category)
-          .eq("completed", false);
-
-        toast.success(`Max effort recorded: ${reps} reps! New target: ${newDailyTarget} reps/day`);
-      } else {
-        toast.success(`Set ${setNumber} logged: ${reps} reps @ RPE ${rpe}`);
-      }
-
-      // Check if daily target is reached before reloading
-      const newTotal = todaySets.reduce((sum, s) => sum + s.reps, 0) + reps;
-      const targetToCheck =
-        (isMaxEffortSet || isMaxEffort) && !movement.id
-          ? calculateInitialDailyTarget(reps)
-          : currentTarget;
-
-      // For max effort sets, always redirect to dashboard
       if (isMaxEffortSet || isMaxEffort) {
         toast.success("🎉 Max effort recorded! Check the dashboard.");
         setTimeout(() => router.push("/dashboard"), 1500);
         return; // Exit early
-      } else if (newTotal >= targetToCheck) {
-        // Small delay to ensure DB transaction completes, then reload data
+      }
+
+      toast.success(`Set ${setNumber} logged: ${reps} reps @ RPE ${rpe}`);
+
+      // Redirect when prescribed set count is met
+      const nonMaxCompleted = todaySets.filter((s) => !s.is_max_effort).length;
+      const completedIncludingThis = nonMaxCompleted + 1;
+      const basePR = exerciseStatus?.current_pr_reps ?? 0;
+      const { sets: prescribedSets } = getDailyPrescription(readiness, basePR);
+      if (prescribedSets > 0 && completedIncludingThis >= prescribedSets) {
         await new Promise((resolve) => setTimeout(resolve, 100));
-        await loadData(false); // Refresh without skeleton to show animation
-        toast.success("🎉 Daily target reached! Great work!");
-        // Wait longer to allow animation to play (animation is 800ms + extra time to see it)
-        setTimeout(() => router.push("/dashboard"), 2500);
+        await loadData(false);
+        toast.success("🎉 All prescribed sets completed! Great work!");
+        setTimeout(() => router.push("/dashboard"), 1500);
         return; // Exit early
       }
 
@@ -479,17 +389,26 @@ export function RecordingContent({
     return null;
   }
 
-  const currentTotal = todaySets.reduce((sum, set) => sum + set.reps, 0);
   const exerciseName =
     EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name ||
     movement.exercise_variation;
 
-  // Calculate next planned reps for the modal
-  const recommendedSets = calculateRecommendedSets(currentTarget, lastBestSet);
-  const nextSetIndex = todaySets.length;
-  const nextPlannedReps = isMaxEffort
-    ? movement.max_effort_reps
-    : recommendedSets[nextSetIndex] || recommendedSets[0] || 0;
+  const currentPR = exerciseStatus?.current_pr_reps ?? 0;
+
+  // Calculate next planned reps and target RPE for modal from readiness+max effort
+  const {
+    sets: prescribedSets,
+    targetRPE,
+    repsPerSet,
+  } = getDailyPrescription(readiness, currentPR);
+  const nonMaxSets = todaySets.filter((s) => !s.is_max_effort);
+  const nonMaxCompleted = nonMaxSets.length;
+  const plannedSets = Array.from({ length: prescribedSets }, (_, index) => ({
+    index: index + 1,
+    reps: repsPerSet,
+    targetRPE,
+  }));
+  const nextPlannedReps = isMaxEffort ? currentPR : repsPerSet;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -519,18 +438,18 @@ export function RecordingContent({
           {isMaxEffort && <CardDescription>{exerciseName}</CardDescription>}
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Enhanced Progress Bar */}
+          {/* Set-Count Progress Bar */}
           {!isMaxEffort && (
-            <EnhancedProgressBar
-              totalTarget={currentTarget}
-              completedSets={todaySets}
-              showAnimation={currentTotal >= currentTarget}
+            <SetCountProgressBar
+              prescribedSets={prescribedSets}
+              completedNonMaxSets={nonMaxCompleted}
             />
           )}
 
           {/* Completed Sets List */}
           <CompletedSetsList
             sets={todaySets}
+            plannedSets={!isMaxEffort ? plannedSets : []}
             onEditSet={handleEditSet}
             onDeleteSet={handleDeleteSet}
             isRefreshing={isRefreshing}
@@ -552,6 +471,7 @@ export function RecordingContent({
         existingSet={editingSet || undefined}
         nextPlannedReps={nextPlannedReps}
         isMaxEffort={isMaxEffort}
+        defaultRPE={!isMaxEffort ? targetRPE : undefined}
         onSave={handleSaveSet}
       />
 
@@ -576,6 +496,21 @@ export function RecordingContent({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PRPromptModal
+        isOpen={showPRModal && !isMaxEffort && !!exerciseStatus?.latest_implied_max_reps}
+        currentPR={exerciseStatus?.current_pr_reps ?? 0}
+        impliedMax={exerciseStatus?.latest_implied_max_reps ?? 0}
+        onDismiss={() => {
+          setPromptDismissed(true);
+          setShowPRModal(false);
+        }}
+        onTakeTest={() => {
+          setPromptDismissed(false);
+          setShowPRModal(false);
+          router.push(`/movement/${category}/record?mode=max-effort`);
+        }}
+      />
     </div>
   );
 }

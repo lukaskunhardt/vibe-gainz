@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { MovementCategory, Movement, Set as WorkoutSet } from "@/types";
+import { ExerciseStatus, MovementCategory, Set as WorkoutSet } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -64,7 +64,6 @@ interface StatsData {
     }
   >;
   readinessByDate: Record<string, number>;
-  targetsByCategory: Record<MovementCategory, Array<{ date: string; target: number }>>;
   bodyWeightByDate: Record<string, number>;
 }
 
@@ -72,7 +71,6 @@ type ChartRow = {
   date: string;
   total: number;
   readiness?: number;
-  target?: number;
   maxReps?: number;
   maxRpe?: number;
   maxIsMax?: boolean;
@@ -83,14 +81,11 @@ type ChartRow = {
 
 interface SingleCategoryChartProps {
   category: MovementCategory;
-  movement: Movement | null;
   categoryStats: StatsData["byCategory"][MovementCategory] | undefined;
   readinessByDate: Record<string, number> | undefined;
-  targetHistory: Array<{ date: string; target: number }> | undefined;
   bodyWeightByDate: Record<string, number> | undefined;
   viewMode: "stacked" | "max";
   showReadiness: boolean;
-  showTarget: boolean;
   showTrend: boolean;
   showBodyWeight: boolean;
   recentExercise: string | null;
@@ -98,14 +93,11 @@ interface SingleCategoryChartProps {
 
 function SingleCategoryChart({
   category,
-  movement,
   categoryStats,
   readinessByDate,
-  targetHistory,
   bodyWeightByDate,
   viewMode,
   showReadiness,
-  showTarget,
   showTrend,
   showBodyWeight,
   recentExercise,
@@ -142,16 +134,7 @@ function SingleCategoryChart({
   const chartData: ChartRow[] = useMemo(() => {
     if (!categoryStats) return [];
 
-    let historyIndex = -1;
-    let currentTarget: number | undefined = undefined;
-
     return categoryStats.dailySets.map((day) => {
-      const history = targetHistory ?? [];
-      while (historyIndex + 1 < history.length && history[historyIndex + 1].date <= day.date) {
-        historyIndex++;
-        currentTarget = history[historyIndex].target;
-      }
-
       const sets = day.sets
         .filter((set) => selectionSet.has(set.exercise_variation))
         .sort((a, b) => a.set_number - b.set_number);
@@ -162,7 +145,6 @@ function SingleCategoryChart({
         date: day.date,
         total: totalReps,
         readiness: readinessByDate?.[day.date],
-        target: currentTarget,
         setCount: sets.length,
         bodyWeight: bodyWeightByDate?.[day.date],
       };
@@ -185,7 +167,7 @@ function SingleCategoryChart({
 
       return row;
     });
-  }, [categoryStats, selectionSet, readinessByDate, targetHistory, bodyWeightByDate]);
+  }, [categoryStats, selectionSet, readinessByDate, bodyWeightByDate]);
 
   const chartDataWithTrend: ChartRow[] = useMemo(() => {
     if (chartData.length === 0) return [];
@@ -232,7 +214,6 @@ function SingleCategoryChart({
     showReadiness && chartDataWithTrend.some((row) => typeof row.readiness === "number");
   const hasBodyWeightLine =
     showBodyWeight && chartDataWithTrend.some((row) => typeof row.bodyWeight === "number");
-  const showTargetLine = showTarget && movement && targetHistory && targetHistory.length > 0;
 
   interface CustomTooltipProps {
     active?: boolean;
@@ -308,9 +289,6 @@ function SingleCategoryChart({
             7-day trend: {data.trend.toFixed(1)} reps
           </div>
         )}
-        {showTargetLine && typeof data.target === "number" && (
-          <div className="text-xs text-muted-foreground">Target: {data.target} reps</div>
-        )}
       </div>
     );
   };
@@ -341,7 +319,7 @@ function SingleCategoryChart({
                   ))}
                 </div>
               </div>
-              {(hasReadinessLine || hasBodyWeightLine || showTargetLine || showTrend) && (
+              {(hasReadinessLine || hasBodyWeightLine || showTrend) && (
                 <div>
                   <div className="mb-1 text-xs font-semibold">Overlays</div>
                   <div className="space-y-1">
@@ -361,12 +339,6 @@ function SingleCategoryChart({
                           style={{ backgroundColor: "hsl(var(--primary))" }}
                         />
                         <span className="text-xs">Body weight (kg)</span>
-                      </div>
-                    )}
-                    {showTargetLine && (
-                      <div className="flex items-center gap-2">
-                        <span className="inline-block h-0.5 w-4 rounded bg-muted-foreground" />
-                        <span className="text-xs">Target volume</span>
                       </div>
                     )}
                     {showTrend && (
@@ -557,18 +529,6 @@ function SingleCategoryChart({
                   name="Body Weight"
                 />
               )}
-              {showTargetLine && (
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="target"
-                  stroke="hsl(var(--muted-foreground))"
-                  strokeDasharray="4 4"
-                  strokeWidth={1.5}
-                  dot={false}
-                  name="Target"
-                />
-              )}
               {showTrend && (
                 <Line
                   yAxisId="left"
@@ -589,13 +549,11 @@ function SingleCategoryChart({
 }
 
 export function StatsContent({ userId }: StatsContentProps) {
-  const [movements, setMovements] = useState<Movement[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<MovementCategory>("push");
   const [viewMode, setViewMode] = useState<"stacked" | "max">("max");
   const [showReadiness, setShowReadiness] = useState(false);
-  const [showTarget, setShowTarget] = useState(false);
   const [showTrend, setShowTrend] = useState(true);
   const [showBodyWeight, setShowBodyWeight] = useState(false);
   const [recentExercises, setRecentExercises] = useState<Record<MovementCategory, string | null>>({
@@ -626,11 +584,23 @@ export function StatsContent({ userId }: StatsContentProps) {
       date: string;
       readiness_score: number | null;
       body_weight_kg: number | null;
+      push_exercise_id: string | null;
+      pull_exercise_id: string | null;
+      legs_exercise_id: string | null;
     }>,
-    targets: Array<{ category: MovementCategory; date: string; target: number }>
+    statuses: ExerciseStatus[]
   ): StatsData => {
     const readinessByDate: Record<string, number> = {};
     const bodyWeightByDate: Record<string, number> = {};
+    const selectionsByCategory: Record<MovementCategory, Record<string, string | null>> = {
+      push: {},
+      pull: {},
+      legs: {},
+    };
+    const statusByExercise = new Map<string, ExerciseStatus>();
+    statuses.forEach((status) => {
+      statusByExercise.set(status.exercise_id, status);
+    });
 
     dailyStats.forEach((stat) => {
       if (stat.readiness_score) {
@@ -639,6 +609,10 @@ export function StatsContent({ userId }: StatsContentProps) {
       if (stat.body_weight_kg) {
         bodyWeightByDate[stat.date] = stat.body_weight_kg;
       }
+
+      selectionsByCategory.push[stat.date] = stat.push_exercise_id;
+      selectionsByCategory.pull[stat.date] = stat.pull_exercise_id;
+      selectionsByCategory.legs[stat.date] = stat.legs_exercise_id;
     });
 
     const statsByCategory: Record<
@@ -729,24 +703,9 @@ export function StatsContent({ userId }: StatsContentProps) {
       });
     });
 
-    const targetsByCategory: Record<MovementCategory, Array<{ date: string; target: number }>> = {
-      push: [],
-      pull: [],
-      legs: [],
-    };
-
-    targets.forEach((entry) => {
-      targetsByCategory[entry.category].push({ date: entry.date, target: entry.target });
-    });
-
-    (Object.keys(targetsByCategory) as MovementCategory[]).forEach((key) => {
-      targetsByCategory[key].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-    });
-
     return {
       byCategory: statsByCategory,
       readinessByDate,
-      targetsByCategory,
       bodyWeightByDate,
     };
   };
@@ -759,31 +718,22 @@ export function StatsContent({ userId }: StatsContentProps) {
       yearAgo.setDate(yearAgo.getDate() - 365);
 
       // OPTIMIZATION: Parallelize all queries
-      const [{ data: movementsData }, { data: sets }, { data: dailyStats }, { data: targets }] =
-        await Promise.all([
-          supabase.from("movements").select("*").eq("user_id", userId),
-          supabase
-            .from("sets")
-            .select("*")
-            .eq("user_id", userId)
-            .gte("logged_at", yearAgo.toISOString())
-            .order("logged_at", { ascending: true }),
-          supabase
-            .from("daily_user_stats")
-            .select(
-              "date, readiness_score, body_weight_kg, push_exercise_id, pull_exercise_id, legs_exercise_id"
-            )
-            .eq("user_id", userId)
-            .gte("date", yearAgo.toISOString().slice(0, 10))
-            .order("date", { ascending: false }),
-          supabase
-            .from("movement_target_history")
-            .select("category, date, target")
-            .eq("user_id", userId)
-            .order("date", { ascending: true }),
-        ]);
-
-      setMovements(movementsData || []);
+      const [{ data: sets }, { data: dailyStats }] = await Promise.all([
+        supabase
+          .from("sets")
+          .select("*")
+          .eq("user_id", userId)
+          .gte("logged_at", yearAgo.toISOString())
+          .order("logged_at", { ascending: true }),
+        supabase
+          .from("daily_user_stats")
+          .select(
+            "date, readiness_score, body_weight_kg, push_exercise_id, pull_exercise_id, legs_exercise_id"
+          )
+          .eq("user_id", userId)
+          .gte("date", yearAgo.toISOString().slice(0, 10))
+          .order("date", { ascending: false }),
+      ]);
 
       // Extract most recent exercise selections (dailyStats is ordered DESC by date)
       const mostRecentExercises = {
@@ -793,11 +743,7 @@ export function StatsContent({ userId }: StatsContentProps) {
       };
       setRecentExercises(mostRecentExercises);
 
-      const statsData = processStats(
-        sets || [],
-        dailyStats || [],
-        (targets || []) as Array<{ category: MovementCategory; date: string; target: number }>
-      );
+      const statsData = processStats(sets || [], dailyStats || [], []);
       setStats(statsData);
     } catch (error) {
       console.error("Error loading stats:", error);
@@ -892,19 +838,15 @@ export function StatsContent({ userId }: StatsContentProps) {
         // Desktop: 3 charts side by side
         <div className="grid gap-4 md:grid-cols-3">
           {categories.map((cat) => {
-            const movement = movements.find((m) => m.category === cat) || null;
             return (
               <SingleCategoryChart
                 key={cat}
                 category={cat}
-                movement={movement}
                 categoryStats={stats?.byCategory[cat]}
                 readinessByDate={stats?.readinessByDate}
-                targetHistory={stats?.targetsByCategory[cat]}
                 bodyWeightByDate={stats?.bodyWeightByDate}
                 viewMode={viewMode}
                 showReadiness={showReadiness}
-                showTarget={showTarget}
                 showTrend={showTrend}
                 showBodyWeight={showBodyWeight}
                 recentExercise={recentExercises[cat]}
@@ -916,14 +858,11 @@ export function StatsContent({ userId }: StatsContentProps) {
         // Mobile: Single chart with category selector
         <SingleCategoryChart
           category={category}
-          movement={movements.find((m) => m.category === category) || null}
           categoryStats={stats?.byCategory[category]}
           readinessByDate={stats?.readinessByDate}
-          targetHistory={stats?.targetsByCategory[category]}
           bodyWeightByDate={stats?.bodyWeightByDate}
           viewMode={viewMode}
           showReadiness={showReadiness}
-          showTarget={showTarget}
           showTrend={showTrend}
           showBodyWeight={showBodyWeight}
           recentExercise={recentExercises[category]}
@@ -938,13 +877,6 @@ export function StatsContent({ userId }: StatsContentProps) {
             onCheckedChange={(checked) => handleReadinessToggle(Boolean(checked))}
           />
           Readiness line
-        </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Checkbox
-            checked={showTarget}
-            onCheckedChange={(checked) => setShowTarget(Boolean(checked))}
-          />
-          Target line
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <Checkbox

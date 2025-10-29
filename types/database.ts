@@ -12,8 +12,6 @@ export interface Movement {
   user_id: string;
   category: MovementCategory;
   exercise_variation: string;
-  max_effort_reps: number;
-  max_effort_date: string;
   is_unlocked: boolean;
   created_at: string;
   updated_at: string;
@@ -31,35 +29,8 @@ export interface Set {
   set_number: number;
   logged_at: string;
   created_at: string;
-}
-
-export interface WeeklyReview {
-  id: string;
-  user_id: string;
-  movement_id: string;
-  category: MovementCategory;
-  week_start_date: string;
-  recovery_score: number;
-  first_set_performance_score: number;
-  rpe_efficiency_score: number;
-  target_achievement_score: number;
-  consistency_score: number;
-  previous_daily_target: number;
-  suggested_daily_target: number;
-  chosen_daily_target: number;
-  user_overrode_suggestion: boolean;
-  created_at: string;
-}
-
-export interface MaxEffortPrompt {
-  id: string;
-  user_id: string;
-  movement_id: string;
-  category: MovementCategory;
-  triggered_at: string;
-  dismissed: boolean;
-  completed: boolean;
-  created_at: string;
+  rir: number;
+  implied_max_reps: number;
 }
 
 export interface Readiness {
@@ -70,14 +41,19 @@ export interface Readiness {
   created_at: string;
 }
 
-export interface MovementTargetHistory {
+export interface ExerciseStatus {
   id: string;
   user_id: string;
-  movement_id: string;
-  category: MovementCategory;
-  date: string; // YYYY-MM-DD
-  target: number;
+  exercise_id: string;
+  current_pr_reps: number;
+  current_pr_tested_at: string | null;
+  current_pr_set_id: string | null;
+  latest_implied_max_reps: number | null;
+  latest_implied_at: string | null;
+  latest_implied_set_id: string | null;
+  prompt_pending: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export interface BodyWeight {

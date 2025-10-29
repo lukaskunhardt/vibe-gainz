@@ -48,8 +48,7 @@ export function SettingsContent({ userId, userEmail }: SettingsContentProps) {
       const supabase = createClient();
 
       // Delete all user data in order (foreign keys)
-      await supabase.from("max_effort_prompts").delete().eq("user_id", userId);
-      await supabase.from("weekly_reviews").delete().eq("user_id", userId);
+      await supabase.from("exercise_status").delete().eq("user_id", userId);
       await supabase.from("sets").delete().eq("user_id", userId);
       await supabase.from("movements").delete().eq("user_id", userId);
 

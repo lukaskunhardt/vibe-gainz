@@ -22,6 +22,7 @@ interface SetLoggingModalProps {
   existingSet?: WorkoutSet;
   nextPlannedReps?: number;
   isMaxEffort: boolean;
+  defaultRPE?: number;
   onSave: (reps: number, rpe: number, isMaxEffort: boolean) => Promise<void>;
 }
 
@@ -32,6 +33,7 @@ export function SetLoggingModal({
   existingSet,
   nextPlannedReps = 0,
   isMaxEffort,
+  defaultRPE,
   onSave,
 }: SetLoggingModalProps) {
   const [reps, setReps] = useState(0);
@@ -48,11 +50,15 @@ export function SetLoggingModal({
         setRPE(existingSet.rpe);
       } else if (mode === "create") {
         setReps(nextPlannedReps);
-        setRPE(7);
+        if (isMaxEffort) {
+          setRPE(10);
+        } else {
+          setRPE(typeof defaultRPE === "number" ? defaultRPE : 7);
+        }
       }
       setIsEditingReps(false);
     }
-  }, [isOpen, mode, existingSet, nextPlannedReps]);
+  }, [isOpen, mode, existingSet, nextPlannedReps, defaultRPE, isMaxEffort]);
 
   const handleSave = async () => {
     if (reps <= 0) {
@@ -81,7 +87,8 @@ export function SetLoggingModal({
   const saveSet = async (isMaxEffortSet: boolean) => {
     setSaving(true);
     try {
-      await onSave(reps, rpe, isMaxEffortSet || isMaxEffort);
+      const effectiveRPE = isMaxEffortSet || isMaxEffort ? 10 : rpe;
+      await onSave(reps, effectiveRPE, isMaxEffortSet || isMaxEffort);
       onClose();
     } catch (error) {
       console.error("Error saving set:", error);

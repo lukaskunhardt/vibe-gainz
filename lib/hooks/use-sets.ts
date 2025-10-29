@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Set, MovementCategory } from "@/types";
+import { computeSetMetrics } from "@/lib/utils/prescription";
 
 export function useSets(userId?: string, category?: MovementCategory, date?: Date) {
   const [sets, setSets] = useState<Set[]>([]);
@@ -124,7 +125,24 @@ export async function updateSet(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = createClient();
-    const { error } = await supabase.from("sets").update(updates).eq("id", setId);
+
+    const { data: existing, error: fetchError } = await supabase
+      .from("sets")
+      .select("reps, rpe, is_max_effort")
+      .eq("id", setId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!existing) throw new Error("Set not found");
+
+    const nextReps = updates.reps ?? existing.reps;
+    const nextRpe = updates.rpe ?? existing.rpe;
+    const { rir, impliedMaxReps } = computeSetMetrics(nextReps, nextRpe, existing.is_max_effort);
+
+    const { error } = await supabase
+      .from("sets")
+      .update({ ...updates, rir, implied_max_reps: impliedMaxReps })
+      .eq("id", setId);
 
     if (error) throw error;
 

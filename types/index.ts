@@ -30,10 +30,10 @@ export interface VolumeAdjustment {
 
 export interface DailyProgress {
   category: MovementCategory;
-  currentReps: number;
-  targetReps: number;
+  completedSets: number;
+  prescribedSets: number;
   isComplete: boolean;
-  hasMaxEffortPrompt: boolean;
+  promptPending: boolean;
 }
 
 export interface WeeklyData {

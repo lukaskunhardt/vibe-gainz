@@ -4,19 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { Movement, MovementCategory, MaxEffortPrompt, Set as WorkoutSet } from "@/types";
+import { ExerciseStatus, Movement, MovementCategory } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Lock, Trophy, Plus, CheckCircle, Flame } from "lucide-react";
-import { format, startOfDay, endOfDay, parseISO, isSameDay, addDays, subDays } from "date-fns";
+import { format, startOfDay, endOfDay, parseISO, isSameDay, addDays } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
-import { MaxEffortPromptModal } from "./max-effort-prompt-modal";
 import { EXERCISE_VARIATIONS, FORM_CUES } from "@/lib/constants/exercises";
 import { StatsContent } from "@/components/stats/stats-content";
+import { SetCountProgressBar } from "@/components/recording/set-count-progress-bar";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
-import { isCapRelaxed, suggestDailyTargetDelta } from "@/lib/utils/recovery-daily";
-import { toast } from "sonner";
+import { getDailyPrescription } from "@/lib/utils/prescription";
 
 interface DashboardContentProps {
   userId: string;
@@ -25,9 +23,10 @@ interface DashboardContentProps {
 interface CategoryProgress {
   category: MovementCategory;
   currentReps: number;
-  targetReps: number;
+  completedSets: number;
+  prescribedSets: number;
   isLocked: boolean;
-  hasMaxEffortPrompt: boolean;
+  promptPending: boolean;
   hasMaxEffortToday: boolean;
   maxEffortRepsToday?: number;
   previousMaxEffortReps?: number;
@@ -35,12 +34,13 @@ interface CategoryProgress {
   movement?: Movement;
   streakDays?: number;
   streakPrevDays?: number;
+  exerciseId?: string | null;
+  targetReps: number;
 }
 
 export function DashboardContent({ userId }: DashboardContentProps) {
   const [progress, setProgress] = useState<CategoryProgress[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activePrompt, setActivePrompt] = useState<MaxEffortPrompt | null>(null);
   // Weekly reviews removed
   const isDesktop = useIsDesktop();
   const searchParams = useSearchParams();
@@ -63,8 +63,8 @@ export function DashboardContent({ userId }: DashboardContentProps) {
       const [
         { data: movementsData },
         { data: todaySets },
-        { data: prompts },
-        { data: allTargetHistory },
+        { data: dailyStatsData },
+        { data: statusData },
         { data: allMaxEffortSets },
       ] = await Promise.all([
         // Fetch movements
@@ -76,19 +76,15 @@ export function DashboardContent({ userId }: DashboardContentProps) {
           .eq("user_id", userId)
           .gte("logged_at", dayStart.toISOString())
           .lte("logged_at", dayEnd.toISOString()),
-        // Fetch active max effort prompts
+        // Fetch readiness and exercise selections for the selected date
         supabase
-          .from("max_effort_prompts")
-          .select("*")
+          .from("daily_user_stats")
+          .select("readiness_score,push_exercise_id,pull_exercise_id,legs_exercise_id")
           .eq("user_id", userId)
-          .eq("dismissed", false)
-          .eq("completed", false),
-        // Fetch ALL target history once (no more per-movement queries!)
-        supabase
-          .from("movement_target_history")
-          .select("*")
-          .eq("user_id", userId)
-          .order("date", { ascending: false }),
+          .eq("date", format(selectedDate, "yyyy-MM-dd"))
+          .maybeSingle(),
+        // Fetch exercise status records
+        supabase.from("exercise_status").select("*").eq("user_id", userId),
         // Fetch all max effort sets for all categories (for comparison data)
         supabase
           .from("sets")
@@ -99,31 +95,16 @@ export function DashboardContent({ userId }: DashboardContentProps) {
       ]);
 
       const movementList = (movementsData ?? []) as Movement[];
+      const statusList = (statusData ?? []) as ExerciseStatus[];
+      const readinessScore =
+        dailyStatsData && typeof dailyStatsData.readiness_score === "number"
+          ? dailyStatsData.readiness_score
+          : null;
 
-      // OPTIMIZATION: In-memory target history lookup (no more DB queries!)
-      const targetHistoryByMovement = new Map<string, Array<{ date: string; target: number }>>();
-      (allTargetHistory ?? []).forEach((entry) => {
-        if (!targetHistoryByMovement.has(entry.movement_id)) {
-          targetHistoryByMovement.set(entry.movement_id, []);
-        }
-        targetHistoryByMovement.get(entry.movement_id)!.push({
-          date: entry.date,
-          target: entry.target,
-        });
-      });
-
-      const getHistoricalTargetFromMemory = (movementId: string, date: Date): number | null => {
-        const dateStr = format(date, "yyyy-MM-dd");
-        const history = targetHistoryByMovement.get(movementId);
-        if (!history) return null;
-
-        // Find most recent target <= date
-        for (const entry of history) {
-          if (entry.date <= dateStr) {
-            return entry.target;
-          }
-        }
-        return null;
+      const selectedExercises: Record<MovementCategory, string | null> = {
+        push: (dailyStatsData?.push_exercise_id as string | null) ?? null,
+        pull: (dailyStatsData?.pull_exercise_id as string | null) ?? null,
+        legs: (dailyStatsData?.legs_exercise_id as string | null) ?? null,
       };
 
       // Group max effort sets by category for fast lookup
@@ -186,7 +167,17 @@ export function DashboardContent({ userId }: DashboardContentProps) {
         const movement = movementList.find((m) => m.category === category);
         const sets = todaySets?.filter((s) => s.category === category) || [];
         const currentReps = sets.reduce((sum, set) => sum + set.reps, 0);
-        const prompt = prompts?.find((p) => p.category === category);
+        const completedSets = sets.filter((s) => !s.is_max_effort).length;
+        const exerciseId = selectedExercises[category] || movement?.exercise_variation || null;
+        const statusForExercise = exerciseId
+          ? statusList.find((status) => status.exercise_id === exerciseId) || null
+          : null;
+        const currentPR = statusForExercise?.current_pr_reps ?? 0;
+        const prescription = getDailyPrescription(readinessScore, currentPR);
+        const targetReps = prescription.repsPerSet * prescription.sets;
+        const promptPending = Boolean(
+          statusForExercise?.prompt_pending && (readinessScore ?? 0) >= 3
+        );
 
         // Check if max effort was performed today
         const maxEffortSetToday = sets.find((s) => s.is_max_effort);
@@ -214,21 +205,14 @@ export function DashboardContent({ userId }: DashboardContentProps) {
         const streakDays = streak?.current ?? 0;
         const streakPrevDays = streak?.prev;
 
-        // Get target from memory
-        let targetReps = 0;
-        if (movement) {
-          const historicalTarget = getHistoricalTargetFromMemory(movement.id, selectedDate);
-          if (historicalTarget !== null) {
-            targetReps = historicalTarget;
-          }
-        }
-
         return {
           category,
           currentReps,
           targetReps,
+          completedSets,
+          prescribedSets: prescription.sets,
           isLocked: !movement,
-          hasMaxEffortPrompt: !!prompt,
+          promptPending,
           hasMaxEffortToday,
           maxEffortRepsToday,
           previousMaxEffortReps,
@@ -236,150 +220,16 @@ export function DashboardContent({ userId }: DashboardContentProps) {
           movement,
           streakDays,
           streakPrevDays,
+          exerciseId,
         };
       });
 
       setProgress(progressData);
-
-      // Set first active prompt as modal
-      if (prompts && prompts.length > 0) {
-        setActivePrompt(prompts[0]);
-      }
-
-      // OPTIMIZATION: Run auto-adjustment async in background (don't block render!)
-      runAutoAdjustment(movementList, supabase);
     } catch (error) {
       console.error("Error loading dashboard:", error);
     } finally {
       setLoading(false);
     }
-  };
-
-  // OPTIMIZATION: Auto-adjustment runs async, doesn't block dashboard
-  const runAutoAdjustment = async (
-    movementList: Movement[],
-    supabase: ReturnType<typeof createClient>
-  ) => {
-    try {
-      const today = new Date();
-      const todayStart = startOfDay(today);
-      const yesterday = subDays(today, 1);
-      const yesterdayStart = startOfDay(yesterday);
-      const yesterdayEnd = endOfDay(yesterday);
-      const dayMinus2 = subDays(today, 2);
-      const dayMinus2Start = startOfDay(dayMinus2);
-
-      // Fetch last two days of sets and readiness in parallel
-      const [{ data: recentSets }, { data: readiness }] = await Promise.all([
-        supabase
-          .from("sets")
-          .select("*")
-          .eq("user_id", userId)
-          .gte("logged_at", dayMinus2Start.toISOString())
-          .lte("logged_at", yesterdayEnd.toISOString())
-          .order("logged_at", { ascending: true }),
-        supabase
-          .from("daily_user_stats")
-          .select("readiness_score")
-          .eq("user_id", userId)
-          .eq(
-            "date",
-            `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
-          )
-          .single(),
-      ]);
-
-      const recentWorkoutSets = (recentSets ?? []) as WorkoutSet[];
-      const yKey = format(yesterdayStart, "yyyy-MM-dd");
-      const d2Key = format(dayMinus2Start, "yyyy-MM-dd");
-
-      // Helper: group sets by category and date
-      const byCatDate = new Map<MovementCategory, Map<string, WorkoutSet[]>>();
-      recentWorkoutSets.forEach((s) => {
-        const d = new Date(s.logged_at);
-        d.setHours(0, 0, 0, 0);
-        const key = format(d, "yyyy-MM-dd");
-        const cat = s.category as MovementCategory;
-        if (!byCatDate.has(cat)) byCatDate.set(cat, new Map());
-        const inner = byCatDate.get(cat)!;
-        if (!inner.has(key)) inner.set(key, []);
-        inner.get(key)!.push(s);
-      });
-
-      // Fetch all current targets in parallel
-      const targetQueries = movementList.map((m) =>
-        supabase
-          .from("movement_target_history")
-          .select("target")
-          .eq("movement_id", m.id)
-          .lte("date", format(yesterdayStart, "yyyy-MM-dd"))
-          .order("date", { ascending: false })
-          .limit(1)
-      );
-      const targetResults = await Promise.all(targetQueries);
-
-      for (let i = 0; i < movementList.length; i++) {
-        const m = movementList[i];
-        const updatedAt = m.updated_at ? new Date(m.updated_at) : undefined;
-        if (updatedAt && updatedAt >= todayStart) continue;
-
-        const cat = m.category;
-        const ySets = byCatDate.get(cat)?.get(yKey) ?? [];
-        const d2Sets = byCatDate.get(cat)?.get(d2Key);
-        const currentTarget = targetResults[i]?.data?.[0]?.target ?? 0;
-
-        const capOk = isCapRelaxed(ySets, d2Sets);
-        const readinessScore = readiness?.readiness_score ?? 3;
-        const suggestion = suggestDailyTargetDelta(
-          ySets,
-          currentTarget,
-          capOk,
-          m.category,
-          readinessScore
-        );
-
-        if (suggestion.delta !== 0) {
-          const nextTarget = Math.max(1, currentTarget + suggestion.delta);
-          const effectiveDate = format(todayStart, "yyyy-MM-dd");
-          const { error } = await supabase.from("movement_target_history").upsert(
-            {
-              user_id: userId,
-              movement_id: m.id,
-              category: m.category,
-              date: effectiveDate,
-              target: nextTarget,
-            },
-            { onConflict: "movement_id,date" }
-          );
-          if (!error) {
-            await supabase
-              .from("movements")
-              .update({ updated_at: new Date().toISOString() })
-              .eq("id", m.id);
-            toast.success(
-              `${cat.charAt(0).toUpperCase() + cat.slice(1)} target: ${currentTarget} → ${nextTarget} (${suggestion.reason})`
-            );
-          }
-        }
-      }
-    } catch {
-      // Ignore auto-adjust errors
-    }
-  };
-
-  const handlePromptDismiss = async () => {
-    if (!activePrompt) return;
-
-    const supabase = createClient();
-    await supabase.from("max_effort_prompts").update({ dismissed: true }).eq("id", activePrompt.id);
-
-    setActivePrompt(null);
-    loadDashboardData();
-  };
-
-  const handlePromptComplete = async () => {
-    setActivePrompt(null);
-    loadDashboardData();
   };
 
   if (loading) {
@@ -455,32 +305,17 @@ export function DashboardContent({ userId }: DashboardContentProps) {
       {/* Movement Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {progress.map((item) => (
-          <MovementCard
-            key={item.category}
-            {...item}
-            onRefresh={loadDashboardData}
-            isDesktop={isDesktop}
-          />
+          <MovementCard key={item.category} {...item} isDesktop={isDesktop} />
         ))}
       </div>
 
       {/* Desktop-only: Render stats below movement cards */}
       {isDesktop && <StatsContent userId={userId} />}
-
-      {/* Max Effort Prompt Modal */}
-      {activePrompt && (
-        <MaxEffortPromptModal
-          prompt={activePrompt}
-          onDismiss={handlePromptDismiss}
-          onComplete={handlePromptComplete}
-        />
-      )}
     </div>
   );
 }
 
 interface MovementCardProps extends CategoryProgress {
-  onRefresh: () => void;
   isDesktop: boolean;
 }
 
@@ -488,8 +323,10 @@ function MovementCard({
   category,
   currentReps,
   targetReps,
+  completedSets,
+  prescribedSets,
   isLocked,
-  hasMaxEffortPrompt,
+  promptPending,
   hasMaxEffortToday,
   maxEffortRepsToday,
   previousMaxEffortReps,
@@ -497,51 +334,34 @@ function MovementCard({
   movement,
   streakDays,
   streakPrevDays,
+  exerciseId,
   isDesktop,
 }: MovementCardProps) {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
-  const percentage = targetReps > 0 ? Math.min((currentReps / targetReps) * 100, 100) : 0;
-  const isComplete = currentReps >= targetReps;
+  const isComplete =
+    prescribedSets > 0 ? completedSets >= prescribedSets : currentReps >= targetReps;
 
   const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
-  const exerciseName = movement
-    ? EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name ||
-      movement.exercise_variation
-    : "";
+  const exerciseName = exerciseId
+    ? EXERCISE_VARIATIONS[category].find((ex) => ex.id === exerciseId)?.name || exerciseId
+    : movement
+      ? EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name ||
+        movement.exercise_variation
+      : "";
 
   const handleCardClick = async () => {
     if (isNavigating) return;
     setIsNavigating(true);
 
     try {
-      const supabase = createClient();
-      const today = format(new Date(), "yyyy-MM-dd");
-      const exerciseField = `${category}_exercise_id`;
-
-      // Check if exercise has been selected for today
-      const { data: dailyStats } = await supabase
-        .from("daily_user_stats")
-        .select(`${exerciseField}`)
-        .eq("user_id", movement?.user_id)
-        .eq("date", today)
-        .single();
-
-      const hasSelectedExercise = dailyStats
-        ? (dailyStats as unknown as Record<string, string | null>)[exerciseField as string]
-        : null;
-
-      if (hasSelectedExercise) {
-        // Exercise already selected, go to recording
+      if (exerciseId) {
         router.push(`/movement/${category}/record`);
       } else {
-        // No exercise selected, go to selection page
         router.push(`/movement/${category}/select-daily`);
       }
-    } catch (error) {
-      console.error("Error checking daily exercise selection:", error);
-      // Fallback to selection page
-      router.push(`/movement/${category}/select-daily`);
+    } finally {
+      setIsNavigating(false);
     }
   };
 
@@ -574,9 +394,11 @@ function MovementCard({
     maxEffortRepsToday && baselineMaxEffortReps ? maxEffortRepsToday - baselineMaxEffortReps : 0;
 
   // Get the GIF URL for the current exercise
-  const gifUrl = movement?.exercise_variation
-    ? FORM_CUES[movement.exercise_variation]?.gifUrl
-    : undefined;
+  const gifUrl = exerciseId
+    ? FORM_CUES[exerciseId]?.gifUrl
+    : movement?.exercise_variation
+      ? FORM_CUES[movement.exercise_variation]?.gifUrl
+      : undefined;
 
   return (
     <button
@@ -600,7 +422,7 @@ function MovementCard({
           </div>
         )}
 
-        {hasMaxEffortPrompt && !hasMaxEffortToday && (
+        {promptPending && !hasMaxEffortToday && (
           <div className="absolute right-2 top-2 z-10">
             <Trophy className="h-6 w-6 animate-pulse text-yellow-500" />
           </div>
@@ -697,15 +519,23 @@ function MovementCard({
               </div>
             </div>
           ) : (
-            // Normal Progress Bar
-            <div>
-              <div className="mb-2 flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="mb-1 flex items-center justify-between">
                 <span className="text-2xl font-bold">
                   {currentReps} / {targetReps}
                 </span>
-                <span className="text-sm text-muted-foreground">{Math.round(percentage)}%</span>
+                <span className="text-sm text-muted-foreground">
+                  {targetReps > 0 ? Math.min(Math.round((currentReps / targetReps) * 100), 999) : 0}
+                  %
+                </span>
               </div>
-              <Progress value={percentage} className="h-2" />
+              <SetCountProgressBar
+                prescribedSets={prescribedSets}
+                completedNonMaxSets={completedSets}
+              />
+              <div className="text-xs text-muted-foreground">
+                {completedSets} of {prescribedSets || 0} sets logged today
+              </div>
             </div>
           )}
 
