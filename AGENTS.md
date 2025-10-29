@@ -30,8 +30,10 @@ Never amend commits unless you have explicit written approval in the task thread
 - Conventional Commits: `feat:`, `fix:`, `docs:`, etc. Example: `feat(friends): implement timeline feed`.
 - Link issues: `Closes #<id>` in commit/PR descriptions.
 - run pnpm build before committing to fix any errors that might cause the code to fail to compile.
+- after you ran a succesful build ,as kthe user if you can proceed to commit.
 
 ## Security & Configuration
 
 - Env: `.env.local` define `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (do not commit secrets). Do not change this file.
 - Database changes must include an SQL migration and RLS updates.
+  

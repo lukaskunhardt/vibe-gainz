@@ -134,39 +134,41 @@ function SingleCategoryChart({
   const chartData: ChartRow[] = useMemo(() => {
     if (!categoryStats) return [];
 
-    return categoryStats.dailySets.map((day) => {
-      const sets = day.sets
-        .filter((set) => selectionSet.has(set.exercise_variation))
-        .sort((a, b) => a.set_number - b.set_number);
+    return categoryStats.dailySets
+      .map((day) => {
+        const sets = day.sets
+          .filter((set) => selectionSet.has(set.exercise_variation))
+          .sort((a, b) => a.set_number - b.set_number);
 
-      const totalReps = sets.reduce((sum, set) => sum + set.reps, 0);
+        const totalReps = sets.reduce((sum, set) => sum + set.reps, 0);
 
-      const row: ChartRow = {
-        date: day.date,
-        total: totalReps,
-        readiness: readinessByDate?.[day.date],
-        setCount: sets.length,
-        bodyWeight: bodyWeightByDate?.[day.date],
-      };
+        const row: ChartRow = {
+          date: day.date,
+          total: totalReps,
+          readiness: readinessByDate?.[day.date],
+          setCount: sets.length,
+          bodyWeight: bodyWeightByDate?.[day.date],
+        };
 
-      sets.forEach((set, idx) => {
-        const index = idx + 1;
-        row[`s${index}_reps`] = set.reps;
-        row[`s${index}_rpe`] = set.rpe;
-        row[`s${index}_max`] = set.is_max_effort;
-      });
+        sets.forEach((set, idx) => {
+          const index = idx + 1;
+          row[`s${index}_reps`] = set.reps;
+          row[`s${index}_rpe`] = set.rpe;
+          row[`s${index}_max`] = set.is_max_effort;
+        });
 
-      const biggest = sets.reduce<(typeof sets)[number] | null>((best, set) => {
-        if (!best || set.reps > best.reps) return set;
-        return best;
-      }, null);
+        const biggest = sets.reduce<(typeof sets)[number] | null>((best, set) => {
+          if (!best || set.reps > best.reps) return set;
+          return best;
+        }, null);
 
-      row.maxReps = biggest?.reps ?? 0;
-      row.maxRpe = biggest?.rpe ?? 0;
-      row.maxIsMax = biggest?.is_max_effort ?? false;
+        row.maxReps = biggest?.reps ?? 0;
+        row.maxRpe = biggest?.rpe ?? 0;
+        row.maxIsMax = biggest?.is_max_effort ?? false;
 
-      return row;
-    });
+        return row;
+      })
+      .filter((row) => (row.setCount ?? 0) > 0); // Filter out days with no sets
   }, [categoryStats, selectionSet, readinessByDate, bodyWeightByDate]);
 
   const chartDataWithTrend: ChartRow[] = useMemo(() => {
@@ -180,15 +182,14 @@ function SingleCategoryChart({
 
     const windowSize = 7;
     const moving: number[] = [];
-    let rollingSum = 0;
 
+    // Calculate rolling average based on last 7 logged workouts (not calendar days)
     for (let i = 0; i < values.length; i++) {
-      rollingSum += values[i];
-      if (i >= windowSize) {
-        rollingSum -= values[i - windowSize];
-      }
-      const divisor = Math.min(i + 1, windowSize);
-      moving.push(divisor > 0 ? Number((rollingSum / divisor).toFixed(2)) : 0);
+      const startIdx = Math.max(0, i - windowSize + 1);
+      const windowValues = values.slice(startIdx, i + 1);
+      const sum = windowValues.reduce((acc, val) => acc + val, 0);
+      const avg = windowValues.length > 0 ? sum / windowValues.length : 0;
+      moving.push(Number(avg.toFixed(2)));
     }
 
     return chartData.map((row, idx) => ({
@@ -286,7 +287,7 @@ function SingleCategoryChart({
         )}
         {showTrend && typeof data.trend === "number" && (
           <div className="text-xs text-muted-foreground">
-            7-day trend: {data.trend.toFixed(1)} reps
+            7-workout trend: {data.trend.toFixed(1)} reps
           </div>
         )}
       </div>
@@ -344,7 +345,7 @@ function SingleCategoryChart({
                     {showTrend && (
                       <div className="flex items-center gap-2">
                         <span className="inline-block h-0.5 w-4 rounded bg-sky-500" />
-                        <span className="text-xs">7-day trend</span>
+                        <span className="text-xs">7-workout trend</span>
                       </div>
                     )}
                   </div>
@@ -440,6 +441,7 @@ function SingleCategoryChart({
                     day: "numeric",
                   })
                 }
+                minTickGap={30}
               />
               <YAxis
                 yAxisId="left"
@@ -537,7 +539,7 @@ function SingleCategoryChart({
                   stroke="#0ea5e9"
                   strokeWidth={2}
                   dot={false}
-                  name="7-day trend"
+                  name="7-workout trend"
                 />
               )}
             </BarChart>
@@ -883,7 +885,7 @@ export function StatsContent({ userId }: StatsContentProps) {
             checked={showTrend}
             onCheckedChange={(checked) => setShowTrend(Boolean(checked))}
           />
-          7-day trend
+          7-workout trend
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <Checkbox
