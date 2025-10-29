@@ -5,11 +5,13 @@ import React from "react";
 interface SetCountProgressBarProps {
   prescribedSets: number;
   completedNonMaxSets: number;
+  variant?: "default" | "compact";
 }
 
 export function SetCountProgressBar({
   prescribedSets,
   completedNonMaxSets,
+  variant = "default",
 }: SetCountProgressBarProps) {
   const totalSets = Math.max(0, prescribedSets);
   const completedSets = Math.max(
@@ -21,17 +23,19 @@ export function SetCountProgressBar({
 
   return (
     <div className="space-y-3">
-      <div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-bold">Sets Progress</span>
-          <span className="text-xs text-muted-foreground">
-            {completedSets}/{totalSets || 0} sets
-          </span>
+      {variant === "default" && (
+        <div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold">Sets Progress</span>
+            <span className="text-xs text-muted-foreground">
+              {completedSets}/{totalSets || 0} sets
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Complete the suggested number of sets based on today&apos;s readiness.
+          </p>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Complete the suggested number of sets based on today&apos;s readiness.
-        </p>
-      </div>
+      )}
 
       <div className="relative">
         <div
@@ -74,7 +78,9 @@ export function SetCountProgressBar({
 
         <div className="mt-2 flex justify-end">
           <span className="text-xs font-semibold text-muted-foreground">
-            {totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0}% complete
+            {variant === "compact"
+              ? `${completedSets}/${totalSets || 0} sets`
+              : `${totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0}% complete`}
           </span>
         </div>
       </div>

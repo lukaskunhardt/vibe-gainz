@@ -326,7 +326,6 @@ function MovementCard({
   completedSets,
   prescribedSets,
   isLocked,
-  promptPending,
   hasMaxEffortToday,
   maxEffortRepsToday,
   previousMaxEffortReps,
@@ -343,12 +342,10 @@ function MovementCard({
     prescribedSets > 0 ? completedSets >= prescribedSets : currentReps >= targetReps;
 
   const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
+
   const exerciseName = exerciseId
     ? EXERCISE_VARIATIONS[category].find((ex) => ex.id === exerciseId)?.name || exerciseId
-    : movement
-      ? EXERCISE_VARIATIONS[category].find((ex) => ex.id === movement.exercise_variation)?.name ||
-        movement.exercise_variation
-      : "";
+    : null;
 
   const handleCardClick = async () => {
     if (isNavigating) return;
@@ -422,11 +419,6 @@ function MovementCard({
           </div>
         )}
 
-        {promptPending && !hasMaxEffortToday && (
-          <div className="absolute right-2 top-2 z-10">
-            <Trophy className="h-6 w-6 animate-pulse text-yellow-500" />
-          </div>
-        )}
         <CardHeader className="relative z-10">
           <CardTitle className="flex items-center justify-between">
             <span>{categoryName}</span>
@@ -468,10 +460,11 @@ function MovementCard({
                   </span>
                 );
               })()}
-              {hasMaxEffortToday && <Trophy className="h-5 w-5 text-purple-500" />}
             </div>
           </CardTitle>
-          <CardDescription className="truncate">{exerciseName}</CardDescription>
+          <CardDescription className="truncate">
+            {exerciseName || "Choose an exercise for today"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="relative z-10 space-y-4">
           {hasMaxEffortToday ? (
@@ -519,23 +512,12 @@ function MovementCard({
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="text-2xl font-bold">
-                  {currentReps} / {targetReps}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {targetReps > 0 ? Math.min(Math.round((currentReps / targetReps) * 100), 999) : 0}
-                  %
-                </span>
-              </div>
+            <div>
               <SetCountProgressBar
                 prescribedSets={prescribedSets}
                 completedNonMaxSets={completedSets}
+                variant="compact"
               />
-              <div className="text-xs text-muted-foreground">
-                {completedSets} of {prescribedSets || 0} sets logged today
-              </div>
             </div>
           )}
 
